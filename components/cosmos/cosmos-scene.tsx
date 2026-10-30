@@ -176,6 +176,10 @@ function CameraRig({ animate }: { animate: boolean }) {
       offset: new THREE.Vector3(),
       /** drag-orbit angles: target follows the pointer, smooth chases target, both spring home on release */
       orbit: { yaw: 0, pitch: 0, yawS: 0, pitchS: 0 },
+      /** spring velocities for position and look target */
+      vel: new THREE.Vector3(),
+      lookVel: new THREE.Vector3(),
+      tmpA: new THREE.Vector3(),
     }),
     [],
   )
@@ -250,18 +254,34 @@ function CameraRig({ animate }: { animate: boolean }) {
     if (!animate) {
       state.pos.copy(wp.pos)
       state.look.copy(wp.look)
+      state.vel.set(0, 0, 0)
+      state.lookVel.set(0, 0, 0)
       fx.warp = 0
     } else {
       state.prev.copy(state.pos)
-      const rate = launching ? 1.05 : 1.5
-      const k = 1 - Math.exp(-delta * rate)
-      state.pos.lerp(wp.pos, k)
-      state.look.lerp(wp.look, 1 - Math.exp(-delta * (rate * 1.6)))
+      // critically damped springs: ease in, glide, settle with no overshoot. The look target is a
+      // little stiffer than the body so the camera turns toward the destination before it arrives.
+      const omega = launching ? 1.5 : 2.6
+      const lookOmega = omega * 1.35
+      const steps = Math.max(1, Math.ceil(delta / (1 / 120)))
+      const h = delta / steps
+      for (let i = 0; i < steps; i++) {
+        state.tmpA.copy(wp.pos).sub(state.pos).multiplyScalar(omega * omega).addScaledVector(state.vel, -2 * omega)
+        state.vel.addScaledVector(state.tmpA, h)
+        state.pos.addScaledVector(state.vel, h)
+        state.tmpA.copy(wp.look).sub(state.look).multiplyScalar(lookOmega * lookOmega).addScaledVector(state.lookVel, -2 * lookOmega)
+        state.lookVel.addScaledVector(state.tmpA, h)
+        state.look.addScaledVector(state.lookVel, h)
+      }
 
       // never fly through the planet: keep a safety bubble unless the waypoint is inside it
       const bubble = 2.55
       if (state.pos.length() < bubble && wp.pos.length() >= bubble - 0.5) {
         state.pos.setLength(bubble)
+        // slide along the bubble instead of pushing into it
+        state.tmpA.copy(state.pos).normalize()
+        const inward = state.vel.dot(state.tmpA)
+        if (inward < 0) state.vel.addScaledVector(state.tmpA, -inward)
       }
 
       const speed = state.pos.distanceTo(state.prev) / Math.max(delta, 1e-4)
@@ -269,7 +289,8 @@ function CameraRig({ animate }: { animate: boolean }) {
 
       cosmosImpulse.warpKick *= Math.exp(-delta * 2.2)
       cosmosImpulse.shake *= Math.exp(-delta * 3.5)
-      const travelWarp = Math.min(1, speed / 22)
+      // streaks only on long hops (moon to moon); short moves around the planet stay clean
+      const travelWarp = Math.min(1, Math.max(0, (speed - 8) / 40))
       fx.warp += (Math.max(travelWarp, cosmosImpulse.warpKick) - fx.warp) * (1 - Math.exp(-delta * 6))
 
       const now = performance.now()
@@ -315,7 +336,7 @@ function CameraRig({ animate }: { animate: boolean }) {
       .addScaledVector(state.up, state.mouseSmooth.y * par * 0.6 + (Math.random() - 0.5) * sh)
     camera.lookAt(state.look)
 
-    const fov = 38 + fx.warp * 22
+    const fov = 38 + fx.warp * 14
     const cam = camera as THREE.PerspectiveCamera
     if (Math.abs(cam.fov - fov) > 0.01) {
       cam.fov = fov

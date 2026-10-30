@@ -14,6 +14,7 @@ import { isTauri } from '@/lib/miner/bridge'
 import { useMiner } from '@/lib/miner/store'
 import { cn } from '@/lib/utils'
 import { Sparkline } from '../hud/charts'
+import { Sheet } from '../hud/sheet'
 import { Label, Panel, StatusDot } from '../hud/panel'
 import { Ticker } from '../hud/ticker'
 
@@ -72,9 +73,9 @@ export function HardwareScreen() {
     <div className="flex flex-col gap-5">
       <FleetHero totals={totals} onAdd={() => setAdding(true)} hasDevices={devices.length > 0} />
 
-      <AnimatePresence initial={false}>{adding && <AddDevice key="add" onClose={() => setAdding(false)} />}</AnimatePresence>
+      <AddDevice open={adding} onClose={() => setAdding(false)} />
 
-      {devices.length === 0 && !adding ? (
+      {devices.length === 0 ? (
         <EmptyFleet onAdd={() => setAdding(true)} />
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
@@ -147,50 +148,63 @@ function FleetHero({ totals, onAdd, hasDevices }: { totals: ReturnType<typeof fl
   )
 }
 
-function AddDevice({ onClose }: { onClose: () => void }) {
+function AddDevice({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
+  const close = () => {
+    setValue('')
+    setError(null)
+    onClose()
+  }
+  const submit = (e?: FormEvent) => {
+    e?.preventDefault()
     const host = normalizeHost(value)
     if (!host) {
       setError('Enter an IP address like 192.168.1.42 or a hostname like bitaxe.local')
       return
     }
     fleet.add(host)
-    onClose()
+    close()
   }
   return (
-    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-      <Panel title="Add a Bitaxe" action={<IconButton label="Close" onClick={onClose} icon={X} />}>
-        <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="flex-1">
-            <label htmlFor="bitaxe-host" className="mb-2 block text-[12.5px] text-muted-foreground">
-              IP address or hostname (shown on the Bitaxe's screen)
-            </label>
-            <Input id="bitaxe-host" autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="192.168.1.42" className="font-mono" spellCheck={false} aria-invalid={!!error} />
-            {error && <p className="mt-2 text-[12.5px] text-destructive">{error}</p>}
-          </div>
-          <button type="submit" data-variant="primary" className="mac-button sm:mt-[26px]">
+    <Sheet
+      open={open}
+      onClose={close}
+      title="Add a Bitaxe"
+      message="Enter the address shown on the Bitaxe's screen, or in your router's list of devices."
+      footer={
+        <>
+          <button type="button" data-sheet-cancel className="mac-button" onClick={close}>
+            Cancel
+          </button>
+          <button type="button" data-variant="primary" className="mac-button" onClick={() => submit()}>
             Add Bitaxe
           </button>
-        </form>
-        <p className="mt-4 text-[12.5px] text-muted-foreground">
+        </>
+      }
+    >
+      <form onSubmit={submit}>
+        <label htmlFor="bitaxe-host" className="t-subhead secondary mb-1 block">
+          IP address or hostname
+        </label>
+        <Input id="bitaxe-host" value={value} onChange={(e) => setValue(e.target.value)} placeholder="192.168.1.42" className="font-mono" spellCheck={false} aria-invalid={!!error} />
+        {error && <p className="t-subhead mt-1.5 text-destructive">{error}</p>}
+        <p className="t-subhead secondary mt-3">
           No Bitaxe handy?{' '}
           <button
             type="button"
-            className="text-primary underline-offset-4 hover:underline"
+            className="text-primary hover:underline"
             onClick={() => {
               fleet.add(DEMO_HOST)
-              onClose()
+              close()
             }}
           >
             Add a demo device
           </button>{' '}
           to try the controls.
         </p>
-      </Panel>
-    </motion.div>
+      </form>
+    </Sheet>
   )
 }
 

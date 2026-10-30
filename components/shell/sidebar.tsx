@@ -1,6 +1,8 @@
 'use client'
 
 import { Square, Play } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useRef, useState } from 'react'
 import { formatHashrate } from '@/lib/format'
 import { minerActions, useMiner } from '@/lib/miner/store'
 import type { Platform } from '@/lib/platform'
@@ -68,11 +70,38 @@ function MiningStatus() {
   const accepted = useMiner((s) => s.acceptedShares)
   const mining = status === 'mining'
   const busy = status === 'starting' || status === 'stopping'
+  // one pulse per accepted share
+  const [pulse, setPulse] = useState(0)
+  const last = useRef(accepted)
+  useEffect(() => {
+    if (accepted > last.current) setPulse((p) => p + 1)
+    last.current = accepted
+  }, [accepted])
   return (
     <div className="m-2.5 mt-0 rounded-[10px] bg-white/[0.05] p-2.5 shadow-[inset_0_0_0_0.5px_rgb(255_255_255/0.08)]">
       <div className="flex items-center gap-2.5">
-        <span className={cn('hex grid size-8 shrink-0 place-items-center', mining ? 'spectrum-fill' : 'bg-white/10')} aria-hidden="true">
-          <span className="hex block size-[26px] bg-[#1c1c1e]/70" />
+        <span className="relative grid size-8 shrink-0 place-items-center" aria-hidden="true">
+          <AnimatePresence>
+            {pulse > 0 && (
+              <motion.span
+                key={pulse}
+                className="spectrum-fill hex absolute inset-0"
+                initial={{ scale: 1, opacity: 0.9 }}
+                animate={{ scale: 2.1, opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.9, ease: [0.2, 0.8, 0.3, 1] }}
+              />
+            )}
+          </AnimatePresence>
+          <motion.span
+            key={`bump-${pulse}`}
+            className={cn('hex relative grid size-8 place-items-center', mining ? 'spectrum-fill' : 'bg-white/10')}
+            initial={pulse > 0 ? { scale: 1.18 } : false}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 14 }}
+          >
+            <span className="hex block size-[26px] bg-[#1c1c1e]/70" />
+          </motion.span>
         </span>
         <div className="min-w-0 flex-1">
           <p className="t-headline truncate">{mining ? formatHashrate(hashrate) : busy ? (status === 'starting' ? 'Starting…' : 'Stopping…') : 'Not mining'}</p>
