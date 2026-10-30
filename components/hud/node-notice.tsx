@@ -13,7 +13,7 @@ export function NodeNotice({ what }: { what: string }) {
   if (source !== 'tauri') return null
   if (node.connected && node.progress < 0.999) {
     return (
-      <div className="glass-quiet flex items-start gap-3 !rounded-2xl p-4 text-[13px]" role="status">
+      <div className="glass-quiet flex items-start gap-3 !rounded-xl p-4 text-[13px]" role="status">
         <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-accent" aria-hidden="true" />
         <p className="text-white/80">
           Saturn Core is still syncing ({(node.progress * 100).toFixed(1)}%). {what} will fill in as it catches up.
@@ -23,7 +23,7 @@ export function NodeNotice({ what }: { what: string }) {
   }
   if (node.connected) return null
   return (
-    <div className="glass-quiet flex items-start gap-3 !rounded-2xl p-4 text-[13px]" role="status">
+    <div className="glass-quiet flex items-start gap-3 !rounded-xl p-4 text-[13px]" role="status">
       <Link2Off className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden="true" />
       <div className="min-w-0">
         <p className="font-medium text-foreground">No Saturn Core node connected</p>

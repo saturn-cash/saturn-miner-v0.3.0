@@ -78,34 +78,34 @@ export function BootSequence({ onDone, cinematic }: { onDone: () => void; cinema
             {phase === 'checks' ? (
               <motion.div key="checks" className="relative flex w-full max-w-md flex-col items-center px-6" exit={{ opacity: 0, scale: 1.6, filter: 'blur(14px)' }} transition={{ duration: 0.5, ease: 'easeIn' }}>
                 <motion.div initial={{ scale: 0, rotate: -60 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 110, damping: 12 }}>
-                  <SaturnLogo className="size-20 drop-shadow-[0_0_30px_rgb(242_182_109/0.6)]" />
+                  <SaturnLogo className="size-[72px] drop-shadow-[0_0_24px_rgb(245_185_113/0.3)]" />
                 </motion.div>
                 <motion.h1
-                  className="display gold-text mt-6 text-[length:calc(56px*var(--ds))]"
-                  initial={{ letterSpacing: '0.6em', opacity: 0 }}
-                  animate={{ letterSpacing: '-0.02em', opacity: 1 }}
-                  transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+                  className="t-large-title mt-5"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  Saturn
+                  Saturn Miner
                 </motion.h1>
-                <div className="mt-8 h-5 text-[13px] text-muted-foreground">
+                <div className="secondary mt-6 h-4 text-[12px]">
                   <AnimatePresence mode="wait">
                     <motion.p key={check} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
                       {CHECKS[Math.min(check, CHECKS.length - 1)]}
                     </motion.p>
                   </AnimatePresence>
                 </div>
-                <div className="mt-4 h-px w-56 overflow-hidden bg-[rgb(234_240_255/0.1)]">
-                  <motion.div className="h-full bg-primary shadow-[0_0_12px_var(--primary)]" animate={{ width: `${(check / CHECKS.length) * 100}%` }} transition={{ duration: 0.25 }} />
+                <div className="mt-3 h-[5px] w-52 overflow-hidden rounded-full bg-white/[0.12]">
+                  <motion.div className="h-full rounded-full bg-primary" animate={{ width: `${(check / CHECKS.length) * 100}%` }} transition={{ duration: 0.25 }} />
                 </div>
-                <p className="mt-10 text-[11px] text-muted-foreground/50">Click to launch</p>
+                <p className="tertiary mt-10 text-[11px]">Click to launch</p>
               </motion.div>
             ) : (
               <motion.div key="warp" className="relative text-center" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }} transition={{ duration: 0.5 }}>
-                <p className="text-[13px] text-muted-foreground">Distance to Saturn</p>
-                <p className="display mt-2 text-[length:calc(clamp(34px,6vw,76px)*var(--ds))] tabular-nums text-foreground drop-shadow-[0_0_40px_rgb(242_182_109/0.5)]">
+                <p className="secondary text-[13px]">Distance to Saturn</p>
+                <p className="gold-text mt-2 text-[clamp(34px,5vw,64px)] tabular-nums">
                   <span ref={counter}>{EARTH_TO_SATURN_KM.toLocaleString('en-US')}</span>
-                  <span className="ml-3 text-[0.4em] text-primary">km</span>
+                  <span className="secondary ml-2 text-[0.38em] font-medium">km</span>
                 </p>
               </motion.div>
             )}

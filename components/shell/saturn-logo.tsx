@@ -1,28 +1,37 @@
+import { useId } from 'react'
 import { cn } from '@/lib/utils'
 
+/**
+ * Saturn silhouette: one solid colour (currentColor, gold by default), the ring passing in front of the
+ * planet with a thin gap so the shape reads at any size. Same geometry as the app icon.
+ */
 export function SaturnLogo({ className }: { className?: string }) {
+  const id = useId().replace(/:/g, '')
+  const ring =
+    'M60,512 a452,128 0 1,0 904,0 a452,128 0 1,0 -904,0 Z M142,512 a370,86 0 1,1 740,0 a370,86 0 1,1 -740,0 Z'
+  const gap =
+    'M38,512 a474,150 0 1,0 948,0 a474,150 0 1,0 -948,0 Z M164,512 a348,64 0 1,1 696,0 a348,64 0 1,1 -696,0 Z'
   return (
-    <svg viewBox="0 0 48 48" className={cn('size-8', className)} aria-hidden="true">
+    <svg viewBox="0 0 1024 1024" className={cn('size-8 text-primary', className)} aria-hidden="true">
       <defs>
-        <linearGradient id="saturn-logo-body" x1="0.2" x2="0.9" y1="0" y2="1">
-          <stop offset="0%" stopColor="#fff1d6" />
-          <stop offset="55%" stopColor="#f2b66d" />
-          <stop offset="100%" stopColor="#9a5626" />
-        </linearGradient>
-        <linearGradient id="saturn-logo-ring" x1="0" x2="1">
-          <stop offset="0%" stopColor="#5fe3d0" />
-          <stop offset="50%" stopColor="#f2b66d" />
-          <stop offset="100%" stopColor="#e86bd8" />
-        </linearGradient>
+        <clipPath id={`front-${id}`}>
+          <rect x="0" y="512" width="1024" height="1024" />
+        </clipPath>
+        <mask id={`cut-${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+          <rect width="1024" height="1024" fill="#fff" />
+          <g transform="rotate(-22 512 512)">
+            <path d={gap} fill="#000" fillRule="evenodd" clipPath={`url(#front-${id})`} />
+          </g>
+        </mask>
       </defs>
-      <g transform="rotate(-20 24 24)">
-        <path d="M2.5 24 A21.5 6.5 0 0 1 45.5 24" fill="none" stroke="url(#saturn-logo-ring)" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
-      </g>
-      <circle cx="24" cy="24" r="11" fill="url(#saturn-logo-body)" />
-      <path d="M13.6 20.5 h20.8 M13.1 25.5 h21.8" stroke="#7a3f18" strokeOpacity="0.35" strokeWidth="1.3" />
-      <path d="M20.5 14.2 l3.5 -1.2 l3.5 1.2 l0 2.6 l-3.5 1.2 l-3.5 -1.2 z" fill="#5fe3d0" opacity="0.75" />
-      <g transform="rotate(-20 24 24)">
-        <path d="M2.5 24 A21.5 6.5 0 0 0 45.5 24" fill="none" stroke="url(#saturn-logo-ring)" strokeWidth="2.6" strokeLinecap="round" />
+      <g fill="currentColor">
+        <g transform="rotate(-22 512 512)">
+          <path d={ring} fillRule="evenodd" />
+        </g>
+        <circle cx="512" cy="512" r="228" mask={`url(#cut-${id})`} />
+        <g transform="rotate(-22 512 512)">
+          <path d={ring} fillRule="evenodd" clipPath={`url(#front-${id})`} />
+        </g>
       </g>
     </svg>
   )

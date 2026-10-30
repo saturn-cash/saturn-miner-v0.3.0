@@ -14,6 +14,7 @@ import { isTauri } from '@/lib/miner/bridge'
 import { useMiner } from '@/lib/miner/store'
 import { cn } from '@/lib/utils'
 import { Sparkline } from '../hud/charts'
+import { Sheet } from '../hud/sheet'
 import { Label, Panel, StatusDot } from '../hud/panel'
 import { Ticker } from '../hud/ticker'
 
@@ -72,9 +73,9 @@ export function HardwareScreen() {
     <div className="flex flex-col gap-5">
       <FleetHero totals={totals} onAdd={() => setAdding(true)} hasDevices={devices.length > 0} />
 
-      <AnimatePresence initial={false}>{adding && <AddDevice key="add" onClose={() => setAdding(false)} />}</AnimatePresence>
+      <AddDevice open={adding} onClose={() => setAdding(false)} />
 
-      {devices.length === 0 && !adding ? (
+      {devices.length === 0 ? (
         <EmptyFleet onAdd={() => setAdding(true)} />
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
@@ -113,8 +114,8 @@ function FleetHero({ totals, onAdd, hasDevices }: { totals: ReturnType<typeof fl
     <section className="flex min-h-[min(40vh,380px)] flex-col justify-end pb-2" aria-label="Bitaxe fleet">
       <Label className="text-foreground/75">Bitaxe fleet hashrate</Label>
       <p className="mt-1 flex flex-wrap items-baseline gap-4">
-        <Ticker value={value / divisor} format={(n) => n.toFixed(2)} className="display gold-text text-[length:calc(clamp(56px,8vw,128px)*var(--ds))] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
-        <span className="text-[clamp(22px,2.2vw,32px)] font-semibold tracking-[-0.02em] text-white/70">{unit}</span>
+        <Ticker value={value / divisor} format={(n) => n.toFixed(2)} className="display gold-text text-[clamp(44px,4.8vw,68px)] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
+        <span className="text-[clamp(17px,1.6vw,22px)] font-medium text-white/55">{unit}</span>
       </p>
       <p className="mt-2 text-[14px] text-foreground/75">
         {hasDevices ? (
@@ -127,7 +128,7 @@ function FleetHero({ totals, onAdd, hasDevices }: { totals: ReturnType<typeof fl
         )}
       </p>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-foreground shadow-[0_0_30px_-6px_var(--primary)] transition hover:brightness-110">
+        <button type="button" onClick={onAdd} data-variant="primary" className="mac-button">
           <Plus className="size-4" aria-hidden="true" />
           Add a Bitaxe
         </button>
@@ -136,7 +137,7 @@ function FleetHero({ totals, onAdd, hasDevices }: { totals: ReturnType<typeof fl
           onClick={scan}
           disabled={!desktop || scanning}
           title={desktop ? 'Look for Bitaxes on your local network' : 'Network scan needs the desktop app'}
-          className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-medium text-primary shadow-[inset_0_0_0_1px_rgb(242_182_109/0.45)] transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mac-button"
         >
           {scanning ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Radar className="size-4" aria-hidden="true" />}
           {scanning ? 'Scanning…' : 'Scan network'}
@@ -147,50 +148,63 @@ function FleetHero({ totals, onAdd, hasDevices }: { totals: ReturnType<typeof fl
   )
 }
 
-function AddDevice({ onClose }: { onClose: () => void }) {
+function AddDevice({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
+  const close = () => {
+    setValue('')
+    setError(null)
+    onClose()
+  }
+  const submit = (e?: FormEvent) => {
+    e?.preventDefault()
     const host = normalizeHost(value)
     if (!host) {
       setError('Enter an IP address like 192.168.1.42 or a hostname like bitaxe.local')
       return
     }
     fleet.add(host)
-    onClose()
+    close()
   }
   return (
-    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-      <Panel title="Add a Bitaxe" action={<IconButton label="Close" onClick={onClose} icon={X} />}>
-        <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="flex-1">
-            <label htmlFor="bitaxe-host" className="mb-2 block text-[12.5px] text-muted-foreground">
-              IP address or hostname (shown on the Bitaxe's screen)
-            </label>
-            <Input id="bitaxe-host" autoFocus value={value} onChange={(e) => setValue(e.target.value)} placeholder="192.168.1.42" className="h-11 rounded-xl font-mono text-[13px]" spellCheck={false} aria-invalid={!!error} />
-            {error && <p className="mt-2 text-[12.5px] text-destructive">{error}</p>}
-          </div>
-          <button type="submit" className="h-11 rounded-full bg-primary px-6 text-[14px] font-semibold text-primary-foreground sm:mt-[26px]">
+    <Sheet
+      open={open}
+      onClose={close}
+      title="Add a Bitaxe"
+      message="Enter the address shown on the Bitaxe's screen, or in your router's list of devices."
+      footer={
+        <>
+          <button type="button" data-sheet-cancel className="mac-button" onClick={close}>
+            Cancel
+          </button>
+          <button type="button" data-variant="primary" className="mac-button" onClick={() => submit()}>
             Add Bitaxe
           </button>
-        </form>
-        <p className="mt-4 text-[12.5px] text-muted-foreground">
+        </>
+      }
+    >
+      <form onSubmit={submit}>
+        <label htmlFor="bitaxe-host" className="t-subhead secondary mb-1 block">
+          IP address or hostname
+        </label>
+        <Input id="bitaxe-host" value={value} onChange={(e) => setValue(e.target.value)} placeholder="192.168.1.42" className="font-mono" spellCheck={false} aria-invalid={!!error} />
+        {error && <p className="t-subhead mt-1.5 text-destructive">{error}</p>}
+        <p className="t-subhead secondary mt-3">
           No Bitaxe handy?{' '}
           <button
             type="button"
-            className="text-primary underline-offset-4 hover:underline"
+            className="text-primary hover:underline"
             onClick={() => {
               fleet.add(DEMO_HOST)
-              onClose()
+              close()
             }}
           >
             Add a demo device
           </button>{' '}
           to try the controls.
         </p>
-      </Panel>
-    </motion.div>
+      </form>
+    </Sheet>
   )
 }
 
@@ -204,13 +218,13 @@ function EmptyFleet({ onAdd }: { onAdd: () => void }) {
           ['Point it at Saturn', 'One click sends it to the pool Saturn Miner uses, with your payout address and its own worker name.'],
         ].map(([t, b], i) => (
           <div key={t} className="well p-4">
-            <p className="font-display text-[length:calc(22px*var(--ds))] font-bold text-primary">{i + 1}</p>
+            <p className="display text-[22px] font-bold text-primary">{i + 1}</p>
             <p className="mt-1 text-[14px] font-semibold">{t}</p>
             <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{b}</p>
           </div>
         ))}
       </div>
-      <button type="button" onClick={onAdd} className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-foreground">
+      <button type="button" onClick={onAdd} data-variant="primary" className="mac-button mt-5">
         <Plus className="size-4" aria-hidden="true" />
         Add a Bitaxe
       </button>
@@ -286,18 +300,18 @@ function DeviceCard({ device }: { device: Device }) {
                 {onSaturn ? <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] text-primary">Mining for Saturn</span> : null}
               </p>
               <p className="mt-1 flex items-baseline gap-2">
-                <span className="display text-[length:calc(46px*var(--ds))] tabular-nums">{formatHashrate(gh * 1e9).split(' ')[0]}</span>
-                <span className="font-display text-[length:calc(16px*var(--ds))] text-primary">{formatHashrate(gh * 1e9).split(' ')[1]}</span>
+                <span className="display text-[46px] tabular-nums">{formatHashrate(gh * 1e9).split(' ')[0]}</span>
+                <span className="display text-[16px] text-primary">{formatHashrate(gh * 1e9).split(' ')[1]}</span>
               </p>
-              {info.expectedHashrate ? <p className="text-[12px] text-muted-foreground">Expected {formatHashrate(info.expectedHashrate * 1e9)}</p> : null}
+              {info.expectedHashrate ? <p className="t-subhead secondary">Expected {formatHashrate(info.expectedHashrate * 1e9)}</p> : null}
             </div>
             <Sparkline data={device.history.length > 1 ? device.history : [0, 0]} className="h-14 w-40 shrink-0" />
           </div>
 
           {device.pendingRestart && (
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn shadow-[inset_0_0_0_1px_rgb(255_203_107/0.3)]">
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-warn/10 px-4 py-3 text-[13px] text-warn shadow-[inset_0_0_0_1px_rgb(255_203_107/0.3)]">
               New settings take effect after a restart.
-              <button type="button" onClick={() => run('restart', () => fleet.restart(device.id))} className="shrink-0 rounded-full bg-warn px-3.5 py-1.5 text-[12.5px] font-semibold text-[#2a1a00]">
+              <button type="button" onClick={() => run('restart', () => fleet.restart(device.id))} data-variant="primary" className="mac-button shrink-0">
                 Restart now
               </button>
             </div>
@@ -335,7 +349,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
   return (
     <div className="min-w-0">
       <dt className="text-[11.5px] text-muted-foreground">{label}</dt>
-      <dd className={cn('mt-0.5 truncate font-display text-[length:calc(15px*var(--ds))] font-semibold tabular-nums', tone)}>{value}</dd>
+      <dd className={cn('mt-0.5 truncate display text-[15px] font-semibold tabular-nums', tone)}>{value}</dd>
     </div>
   )
 }
@@ -356,7 +370,7 @@ function OfflineState({ device }: { device: Device }) {
         </p>
       )}
       {device.status === 'offline' && (
-        <button type="button" onClick={() => fleet.refresh(device.id)} className="rounded-full px-4 py-1.5 text-[13px] font-medium text-primary shadow-[inset_0_0_0_1px_rgb(242_182_109/0.45)] hover:bg-primary/10">
+        <button type="button" onClick={() => fleet.refresh(device.id)} className="mac-button">
           Retry
         </button>
       )}
@@ -375,7 +389,7 @@ function DeviceSettings({ device, onDone }: { device: Device; onDone: () => void
   const [tab, setTab] = useState<Tab>('Pool')
   return (
     <div className="mt-5 border-t border-[rgb(234_240_255/0.08)] pt-5">
-      <div className="flex gap-1 rounded-full bg-[rgb(234_240_255/0.04)] p-1 shadow-[inset_0_0_0_1px_rgb(234_240_255/0.08)]" role="tablist">
+      <div className="mac-segmented flex w-full" role="tablist">
         {TABS.map((t) => (
           <button
             key={t}
@@ -383,10 +397,9 @@ function DeviceSettings({ device, onDone }: { device: Device; onDone: () => void
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={cn('relative flex-1 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors', tab === t ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+            className="flex-1"
           >
-            {tab === t && <motion.span layoutId={`tab-${device.id}`} className="absolute inset-0 rounded-full bg-primary" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
-            <span className="relative">{t}</span>
+            {t}
           </button>
         ))}
       </div>
@@ -420,7 +433,7 @@ function useSave(onDone: () => void) {
 function SaveRow({ label, onClick, saving, error, note }: { label: string; onClick: () => void; saving: boolean; error: string | null; note?: string }) {
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3">
-      <button type="button" onClick={onClick} disabled={saving} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-[13.5px] font-semibold text-primary-foreground disabled:opacity-60">
+      <button type="button" onClick={onClick} disabled={saving} data-variant="primary" className="mac-button">
         {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
         {label}
       </button>
@@ -436,7 +449,7 @@ function Field({ id, label, value, onChange, type = 'text', mono = true }: { id:
       <label htmlFor={id} className="mb-1.5 block text-[12.5px] text-muted-foreground">
         {label}
       </label>
-      <Input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={cn('h-10 rounded-xl text-[13px]', mono && 'font-mono')} spellCheck={false} />
+      <Input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} className={cn('text-[13px]', mono && 'font-mono')} spellCheck={false} />
     </div>
   )
 }
@@ -464,7 +477,7 @@ function PoolTab({ device, onDone }: { device: Device; onDone: () => void }) {
           type="button"
           disabled={!saturn || saving}
           onClick={() => saturn && save(() => fleet.setPool(device.id, saturn))}
-          className="shrink-0 rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground shadow-[0_0_24px_-6px_var(--primary)] disabled:opacity-50"
+          data-variant="primary" className="mac-button shrink-0"
         >
           Point at Saturn
         </button>
@@ -518,11 +531,11 @@ function PerformanceTab({ device, onDone }: { device: Device; onDone: () => void
                 setFreq(p.frequency)
                 setVolt(p.coreVoltage)
               }}
-              className={cn('rounded-2xl p-3.5 text-left transition-colors', on ? 'bg-primary/15 shadow-[inset_0_0_0_1.5px_var(--primary)]' : 'bg-[rgb(234_240_255/0.04)] shadow-[inset_0_0_0_1px_rgb(234_240_255/0.08)] hover:bg-[rgb(234_240_255/0.08)]')}
+              className={cn('rounded-lg p-3.5 text-left transition-colors', on ? 'bg-primary/15 shadow-[inset_0_0_0_1.5px_var(--primary)]' : 'bg-[rgb(234_240_255/0.04)] shadow-[inset_0_0_0_1px_rgb(234_240_255/0.08)] hover:bg-[rgb(234_240_255/0.08)]')}
             >
               <span className="flex items-baseline justify-between">
                 <span className={cn('text-[14px] font-semibold', k === 'turbo' && 'text-warn')}>{PRESET_COPY[k].title}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">
+                <span className="font-mono t-subhead secondary">
                   {p.frequency} MHz
                 </span>
               </span>
@@ -551,7 +564,7 @@ function OptionSelect({ id, label, unit, value, options, onChange }: { id: strin
       <label htmlFor={id} className="mb-1.5 block text-[12.5px] text-muted-foreground">
         {label}
       </label>
-      <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-10 w-full rounded-xl border border-input bg-[rgb(234_240_255/0.04)] px-3 font-mono text-[13px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+      <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-7 w-full rounded-md bg-white/[0.08] px-2 text-[13px] text-foreground shadow-[inset_0_0_0_0.5px_rgb(255_255_255/0.12)] outline-none">
         {list.map((o) => (
           <option key={o} value={o} className="bg-[#140b24]">
             {o} {unit}
@@ -582,7 +595,7 @@ function CoolingTab({ device, onDone }: { device: Device; onDone: () => void }) 
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between">
           <Label>{auto ? 'Target ASIC temperature' : 'Fan speed'}</Label>
-          <span className="font-display text-[length:calc(14px*var(--ds))] text-primary">{auto ? `${target}°C` : `${fan}%`}</span>
+          <span className="display text-[14px] text-primary">{auto ? `${target}°C` : `${fan}%`}</span>
         </div>
         {auto ? (
           <Slider value={[target]} min={45} max={70} step={1} onValueChange={(v) => setTarget(Array.isArray(v) ? v[0] : (v as number))} aria-label="Target temperature" />

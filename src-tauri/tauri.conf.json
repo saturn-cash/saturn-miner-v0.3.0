@@ -16,10 +16,16 @@
         "title": "Saturn Miner",
         "width": 1440,
         "height": 920,
-        "minWidth": 1024,
+        "minWidth": 960,
         "minHeight": 680,
-        "backgroundColor": "#05030d",
-        "center": true
+        "backgroundColor": "#141416",
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 20,
+          "y": 22
+        }
       }
     ],
     "security": {

@@ -5,9 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--app-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--app-display), ui-sans-serif, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', 'Segoe UI Variable Text', system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter Variable', 'Segoe UI Variable Display', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, 'JetBrains Mono Variable', monospace;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -75,7 +75,7 @@
   --chart-1: #f2b66d;
   --chart-2: #5fe3d0;
   --chart-3: #e86bd8;
-  --radius: 1.375rem;
+  --radius: 0.625rem;
 }
 
 @layer base {
@@ -88,86 +88,154 @@
   }
   body {
     @apply text-foreground font-sans;
-    font-feature-settings: 'cv11', 'ss03', 'tnum';
-    letter-spacing: -0.006em;
+    font-size: 13px;
+    line-height: 1.38;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'tnum';
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  [data-selectable] {
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: auto;
   }
   ::selection {
     background: rgb(245 185 113 / 0.35);
   }
+  /* macOS focus ring: soft accent halo */
   :focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(245 185 113 / 0.45);
   }
 }
 
 /* ------------------------------------------------------------------ */
-/* Liquid glass                                                        */
+/* macOS materials                                                     */
 /*                                                                     */
-/* Clear material: low tint so the planet shows through, a blur that  */
-/* keeps text readable, and light catching the rim (bright top-left    */
-/* edge, faint bottom edge) the way Apple's glass does.                */
+/* .glass      content box (like a GroupBox / System Settings group):  */
+/*             dark translucent fill over the scene, 0.5pt hairline,   */
+/*             10pt corners.                                           */
+/* .sidebar    NSVisualEffectView .sidebar: heavy blur, more opaque.   */
+/* .toolbar    unified title bar / toolbar strip.                      */
 /* ------------------------------------------------------------------ */
 .glass {
   position: relative;
-  isolation: isolate;
-  border-radius: 28px;
-  /* a light dimming layer under the clear tint keeps text readable over the bright side of the planet */
-  background: linear-gradient(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.05)), rgb(16 16 22 / 0.3);
-  backdrop-filter: blur(28px) saturate(170%) brightness(0.72);
+  border-radius: 12px;
+  background: rgb(28 28 30 / 0.62);
+  backdrop-filter: blur(30px) saturate(160%);
   box-shadow:
-    inset 0 0.5px 0 rgb(255 255 255 / 0.5),
-    inset 0 -0.5px 0 rgb(255 255 255 / 0.12),
-    0 24px 60px -24px rgb(0 0 0 / 0.55);
-}
-/* specular rim */
-.glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(140deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.1) 22%, rgb(255 255 255 / 0.02) 50%, rgb(255 255 255 / 0.08) 78%, rgb(255 255 255 / 0.32));
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-/* soft sheen across the top of the pane */
-.glass::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.07), transparent 38%);
-  pointer-events: none;
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.1),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.08),
+    0 1px 2px rgb(0 0 0 / 0.25),
+    0 8px 24px -12px rgb(0 0 0 / 0.5);
 }
 .glass-quiet {
-  border-radius: 20px;
-  background: rgb(255 255 255 / 0.06);
-  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.14);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+}
+.sidebar {
+  background: rgb(36 36 40 / 0.72);
+  backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset -0.5px 0 0 rgb(255 255 255 / 0.08);
+}
+.toolbar {
+  background: rgb(22 22 24 / 0.55);
+  backdrop-filter: blur(30px) saturate(160%);
+  box-shadow: inset 0 -0.5px 0 rgb(255 255 255 / 0.08);
+}
+/* row separator inside a group, inset from the leading edge like AppKit */
+.mac-rows > * + * {
+  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.08);
 }
 
-/* System type: Inter standing in for SF Pro (which can't ship in a Windows app) */
+/* macOS text styles (points == px at 1x) */
+.t-large-title { font-size: 26px; line-height: 32px; font-weight: 700; letter-spacing: 0.01em; }
+.t-title1 { font-size: 22px; line-height: 26px; font-weight: 400; }
+.t-title2 { font-size: 17px; line-height: 22px; font-weight: 600; }
+.t-title3 { font-size: 15px; line-height: 20px; font-weight: 600; }
+.t-headline { font-size: 13px; line-height: 16px; font-weight: 600; }
+.t-body { font-size: 13px; line-height: 16px; }
+.t-callout { font-size: 12px; line-height: 15px; }
+.t-subhead { font-size: 11px; line-height: 14px; }
+.t-caption { font-size: 10px; line-height: 13px; }
+.secondary { color: rgb(235 235 245 / 0.6); }
+.tertiary { color: rgb(235 235 245 / 0.3); }
+
+/* macOS push button */
+.mac-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.12), 0 0.5px 1px rgb(0 0 0 / 0.4);
+  transition: background-color 0.12s;
+}
+.mac-button:hover { background: rgb(255 255 255 / 0.16); }
+.mac-button:active { background: rgb(255 255 255 / 0.22); }
+.mac-button[data-variant='primary'] {
+  color: #1c1206;
+  background: linear-gradient(rgb(255 255 255 / 0.18), rgb(255 255 255 / 0)), var(--primary);
+}
+.mac-button[data-variant='primary']:active { filter: brightness(0.92); }
+.mac-button:disabled { opacity: 0.45; pointer-events: none; }
+
+/* macOS segmented control */
+.mac-segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 7px;
+  background: rgb(255 255 255 / 0.07);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.06);
+}
+.mac-segmented > button {
+  position: relative;
+  height: 20px;
+  padding: 0 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(235 235 245 / 0.75);
+}
+.mac-segmented > button[aria-checked='true'],
+.mac-segmented > button[aria-selected='true'] {
+  color: #fff;
+  background: rgb(255 255 255 / 0.2);
+  box-shadow: 0 0.5px 1px rgb(0 0 0 / 0.35), inset 0 0.5px 0 rgb(255 255 255 / 0.12);
+}
+
+/* draggable window chrome (Tauri) */
+[data-tauri-drag-region] { -webkit-app-region: drag; }
+
+/* System type: SF Pro on macOS; Inter stands in on Windows/Linux */
 :root {
-  --app-display: 'Inter Variable';
-  --app-sans: 'Inter Variable';
   --ds: 1;
-  --display-weight: 700;
 }
 .display {
   font-family: var(--font-display);
-  font-weight: var(--display-weight);
-  letter-spacing: -0.03em;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   line-height: 1;
 }
-/* big hero numerals: light weight, tight, like Weather and Fitness */
+/* hero numerals: SF Pro Display, light, like Stocks and Weather */
 .gold-text {
   color: #fff;
-  font-weight: 250 !important;
-  letter-spacing: -0.05em;
+  font-family: var(--font-display);
+  font-weight: 300 !important;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Hexagon clip: Saturn's north-pole storm is the motif for controls */
@@ -209,7 +277,7 @@
 /* Thin scrollbars that don't break the glass */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+  scrollbar-color: rgb(255 255 255 / 0.25) transparent;
 }
 
 [data-motion='off'] *,
@@ -227,7 +295,44 @@
 
 /* Inset well for secondary readouts inside a panel */
 .well {
-  border-radius: 18px;
-  background: rgb(255 255 255 / 0.06);
-  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.12);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+}
+
+/* ------------------------------------------------------------------ */
+/* Spectrum: the reactor's light (Apple Intelligence-style palette).    */
+/* The gradient angle animates through a registered custom property so */
+/* the hexagon clip stays still while the colours flow around it.      */
+/* ------------------------------------------------------------------ */
+@property --spectrum-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+:root {
+  --spectrum: #bc82f3, #f5b9ea, #8d9fff, #ff6778, #ffba71, #c686ff, #bc82f3;
+}
+.spectrum-fill {
+  background: conic-gradient(from var(--spectrum-angle), var(--spectrum));
+  animation: spectrum-turn 6s linear infinite;
+}
+.spectrum-fill[data-speed='slow'] {
+  animation-duration: 11s;
+}
+@keyframes spectrum-turn {
+  to {
+    --spectrum-angle: 360deg;
+  }
+}
+@keyframes spectrum-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
 }
