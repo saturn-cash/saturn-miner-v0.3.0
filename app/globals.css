@@ -1,0 +1,233 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--app-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--app-display), ui-sans-serif, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-aurora: var(--aurora);
+  --color-void: var(--void);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --radius-sm: calc(var(--radius) * 0.4);
+  --radius-md: calc(var(--radius) * 0.6);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+}
+
+/*
+ * Palette — taken from the planet itself.
+ *   void      #020308  the space between rings
+ *   nebula    #140b24  glass tint for panels
+ *   saturn    #f2b66d  butterscotch cloud bands (primary)
+ *   storm     #5fe3d0  the north-pole hexagon (accent)
+ *   aurora    #e86bd8  polar aurora, used only for rare moments
+ *   ice       #eaf0ff  ring ice, body text
+ */
+:root {
+  color-scheme: dark;
+  --void: #020308;
+  --background: #020308;
+  --foreground: #ffffff;
+  --card: #140b24;
+  --card-foreground: #eaf0ff;
+  --popover: #140b24;
+  --popover-foreground: #eaf0ff;
+  --primary: #f5b971;
+  --primary-foreground: #1c1206;
+  --secondary: #1d1233;
+  --secondary-foreground: #eaf0ff;
+  --muted: rgb(234 240 255 / 0.09);
+  --muted-foreground: rgb(235 235 245 / 0.6);
+  --accent: #64d2ff;
+  --accent-foreground: #001a26;
+  --aurora: #bf5af2;
+  --destructive: #ff453a;
+  --ok: #30d158;
+  --warn: #ffd60a;
+  --border: rgb(255 255 255 / 0.1);
+  --input: rgb(255 255 255 / 0.14);
+  --ring: #f5b971;
+  --chart-1: #f2b66d;
+  --chart-2: #5fe3d0;
+  --chart-3: #e86bd8;
+  --radius: 1.375rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    background: var(--void);
+  }
+  body {
+    @apply text-foreground font-sans;
+    font-feature-settings: 'cv11', 'ss03', 'tnum';
+    letter-spacing: -0.006em;
+  }
+  ::selection {
+    background: rgb(245 185 113 / 0.35);
+  }
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Liquid glass                                                        */
+/*                                                                     */
+/* Clear material: low tint so the planet shows through, a blur that  */
+/* keeps text readable, and light catching the rim (bright top-left    */
+/* edge, faint bottom edge) the way Apple's glass does.                */
+/* ------------------------------------------------------------------ */
+.glass {
+  position: relative;
+  isolation: isolate;
+  border-radius: 28px;
+  /* a light dimming layer under the clear tint keeps text readable over the bright side of the planet */
+  background: linear-gradient(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.05)), rgb(16 16 22 / 0.3);
+  backdrop-filter: blur(28px) saturate(170%) brightness(0.72);
+  box-shadow:
+    inset 0 0.5px 0 rgb(255 255 255 / 0.5),
+    inset 0 -0.5px 0 rgb(255 255 255 / 0.12),
+    0 24px 60px -24px rgb(0 0 0 / 0.55);
+}
+/* specular rim */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.1) 22%, rgb(255 255 255 / 0.02) 50%, rgb(255 255 255 / 0.08) 78%, rgb(255 255 255 / 0.32));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* soft sheen across the top of the pane */
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.07), transparent 38%);
+  pointer-events: none;
+}
+.glass-quiet {
+  border-radius: 20px;
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.14);
+}
+
+/* System type: Inter standing in for SF Pro (which can't ship in a Windows app) */
+:root {
+  --app-display: 'Inter Variable';
+  --app-sans: 'Inter Variable';
+  --ds: 1;
+  --display-weight: 700;
+}
+.display {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+/* big hero numerals: light weight, tight, like Weather and Fitness */
+.gold-text {
+  color: #fff;
+  font-weight: 250 !important;
+  letter-spacing: -0.05em;
+}
+
+/* Hexagon clip: Saturn's north-pole storm is the motif for controls */
+.hex {
+  clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
+}
+
+.flight-path {
+  background: rgb(255 255 255 / 0.12);
+}
+
+.hud-range {
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--fill, 50%), var(--muted) var(--fill, 50%), var(--muted) 100%);
+  cursor: pointer;
+}
+
+@keyframes sweep {
+  from {
+    left: -25%;
+  }
+  to {
+    left: 110%;
+  }
+}
+@keyframes radar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* Thin scrollbars that don't break the glass */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}
+
+[data-motion='off'] *,
+[data-motion='off'] *::before,
+[data-motion='off'] *::after {
+  animation: none !important;
+  transition-duration: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flight-path {
+    animation: none;
+  }
+}
+
+/* Inset well for secondary readouts inside a panel */
+.well {
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.12);
+}
