@@ -27,7 +27,7 @@ export function NetworkScreen() {
         {stats.map((s, i) => (
           <Panel key={s.label}>
             <Label>{s.label}</Label>
-            <p className="font-display mt-2 truncate text-[length:calc(clamp(18px,1.7vw,26px)*var(--ds))] font-semibold tabular-nums">{s.node}</p>
+            <p className="font-display mt-2 truncate text-[20px] font-semibold tabular-nums">{s.node}</p>
           </Panel>
         ))}
       </div>
@@ -46,7 +46,7 @@ export function NetworkScreen() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-[13px]">
             <thead>
-              <tr className="text-left text-[12px] text-muted-foreground">
+              <tr className="text-left t-subhead secondary">
                 <th scope="col" className="pb-2 font-normal">Height</th>
                 <th scope="col" className="pb-2 font-normal">Hash</th>
                 <th scope="col" className="pb-2 font-normal">Txs</th>
@@ -60,7 +60,7 @@ export function NetworkScreen() {
                   <td className="py-2">
                     #{formatInt(b.height)} {b.minedByYou && <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] text-primary">Yours</span>}
                   </td>
-                  <td className="py-2 font-mono text-[12px] text-muted-foreground">{shortHash(b.hash, 12, 8)}</td>
+                  <td className="py-2 font-mono t-subhead secondary">{shortHash(b.hash, 12, 8)}</td>
                   <td className="py-2">{b.txCount}</td>
                   <td className="py-2">{(b.size / 1000).toFixed(1)} kB</td>
                   <td className="py-2 text-right text-muted-foreground">{timeAgo(b.time)}</td>
@@ -133,13 +133,13 @@ function BlockChain() {
             exit={{ opacity: 0, scale: 0.6, x: -60 }}
             transition={{ type: 'spring', stiffness: 160, damping: 20 }}
             className={cn(
-              'hex-card relative z-10 flex min-w-[88px] flex-1 flex-col gap-1 rounded-2xl bg-[rgb(20_11_36/0.9)] p-3 shadow-[inset_0_0_0_1px_rgb(234_240_255/0.08)]',
+              'hex-card relative z-10 flex min-w-[88px] flex-1 flex-col gap-1 rounded-lg bg-[rgb(20_11_36/0.9)] p-3 shadow-[inset_0_0_0_1px_rgb(234_240_255/0.08)]',
               i === visible.length - 1 && 'shadow-[inset_0_0_0_1px_var(--primary),0_0_30px_-6px_var(--primary)]',
               b.minedByYou && 'shadow-[inset_0_0_0_1px_rgb(242_182_109/0.7)]',
             )}
           >
-            <span className="text-[11px] text-muted-foreground">#{formatInt(b.height)}</span>
-            <span className="font-display text-[length:calc(15px*var(--ds))] font-semibold">{b.txCount} tx</span>
+            <span className="t-subhead secondary">#{formatInt(b.height)}</span>
+            <span className="display text-[15px] font-semibold">{b.txCount} tx</span>
             <span className="truncate font-mono text-[10px] text-muted-foreground">{b.hash.slice(0, 10)}</span>
           </motion.div>
         ))}

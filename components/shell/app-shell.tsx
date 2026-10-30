@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { sound } from '@/lib/audio/sound'
 import { cosmos } from '@/lib/cosmos/store'
 import { useMiner } from '@/lib/miner/store'
+import { usePlatform } from '@/lib/platform'
 import { CosmosView } from '../cosmos/cosmos-view'
 import { ActivityScreen } from '../screens/activity-screen'
 import { DiagnosticsScreen } from '../screens/diagnostics-screen'
@@ -14,9 +15,9 @@ import { NetworkScreen } from '../screens/network-screen'
 import { OverviewScreen } from '../screens/overview-screen'
 import { SettingsScreen } from '../screens/settings-screen'
 import { WalletScreen } from '../screens/wallet-screen'
-import { ArrivalCard } from './arrival-card'
 import { BootSequence } from './boot-sequence'
 import type { ScreenId } from './destinations'
+import { Sidebar } from './sidebar'
 import { TabBar } from './tab-bar'
 import { Supernova } from './supernova'
 import { Topbar } from './topbar'
@@ -61,6 +62,7 @@ export default function AppShell() {
   const animations = useMiner((s) => s.settings.animations)
   const reduced = usePrefersReducedMotion()
   const cinematic = animations && !reduced
+  const platform = usePlatform()
 
   const finishBoot = useCallback(() => setBooted(true), [])
 
@@ -82,26 +84,26 @@ export default function AppShell() {
   return (
     <div data-motion={cinematic ? 'on' : 'off'} className="relative h-dvh overflow-hidden text-foreground">
       <CosmosView reducedMotion={reduced} />
-      {/* scrims keep text legible over the brightest parts of the planet */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_70%_40%,transparent_30%,rgb(5_3_13/0.55)_100%)]" />
-      <div aria-hidden="true" className="pointer-events-none fixed inset-y-0 left-0 w-[45vw] bg-gradient-to-r from-[rgb(5_3_13/0.45)] to-transparent" />
+      {/* a soft vignette keeps content legible over the bright side of the planet */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_72%_42%,transparent_28%,rgb(0_0_0/0.5)_100%)]" />
 
       <BootSequence onDone={finishBoot} cinematic={cinematic} />
 
       <div className="relative z-10 flex h-dvh">
+        <Sidebar active={screen} onSelect={go} platform={platform} />
         <div className="relative flex min-w-0 flex-1 flex-col">
           <Topbar screen={screen} />
-          <main className="flex-1 overflow-y-auto px-5 pb-32 pt-4 md:px-10">
+          <main className="flex-1 overflow-y-auto px-5 pb-24 pt-5 md:px-7 md:pb-8">
             {booted && (
               <AnimatePresence mode="wait">
                 <motion.div
                   key={screen}
-                  initial={cinematic ? { opacity: 0, scale: 0.96, y: 12 } : false}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={cinematic ? { opacity: 0, scale: 1.02, y: -8 } : { opacity: 0 }}
-                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: cinematic ? (visit > 0 ? 0.35 : 0.55) : 0 }}
-                  // no filter on this wrapper: an ancestor filter stops the glass panels from blurring the planet behind them
-                  className="mx-auto max-w-[1480px] origin-top"
+                  initial={cinematic ? { opacity: 0, y: 6 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                  // no filter on this wrapper: an ancestor filter stops the panels from blurring the scene behind them
+                  className="mx-auto max-w-[1280px]"
                 >
                   {screen === 'overview' && <OverviewScreen onNavigate={go} />}
                   {screen === 'mining' && <MiningScreen />}
@@ -118,8 +120,10 @@ export default function AppShell() {
         </div>
       </div>
 
-      <TabBar active={screen} onSelect={go} />
-      {cinematic && <ArrivalCard screen={screen} visitKey={visit} />}
+      {/* narrow windows (browser preview on a phone) fall back to the bottom tab bar */}
+      <div className="md:hidden">
+        <TabBar active={screen} onSelect={go} />
+      </div>
       <Supernova />
     </div>
   )

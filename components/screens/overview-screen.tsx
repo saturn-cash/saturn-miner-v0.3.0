@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUpRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { motion } from 'motion/react'
 import { formatCoin, formatDuration, formatHashrate, formatInt, hashrateUnit, shortHash, timeAgo } from '@/lib/format'
 import { useMiner } from '@/lib/miner/store'
@@ -21,7 +21,7 @@ export function OverviewScreen({ onNavigate }: { onNavigate: (id: ScreenId) => v
         <NetworkPanel onNavigate={onNavigate} />
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
-        <Panel title="Event stream" className="xl:col-span-2" action={<NavLink onClick={() => onNavigate('activity')}>All events</NavLink>}>
+        <Panel title="Activity" className="xl:col-span-2" action={<NavLink onClick={() => onNavigate('activity')}>Show All</NavLink>}>
           <LogFeedConnected />
         </Panel>
         <WalletPanel onNavigate={onNavigate} />
@@ -32,9 +32,9 @@ export function OverviewScreen({ onNavigate }: { onNavigate: (id: ScreenId) => v
 
 function NavLink({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary">
+    <button type="button" onClick={onClick} className="t-callout inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-primary transition-colors hover:bg-white/[0.06]">
       {children}
-      <ArrowUpRight className="size-3.5" aria-hidden="true" />
+      <ChevronRight className="size-3.5" aria-hidden="true" />
     </button>
   )
 }
@@ -58,15 +58,15 @@ function Hero() {
           : 'Engine idle. Start mining to light up the rings.'
 
   return (
-    <section className="relative flex min-h-[min(62vh,600px)] flex-col justify-end pb-4" aria-label="Mining status">
+    <section className="relative flex min-h-[min(48vh,460px)] flex-col justify-end pb-2" aria-label="Mining status">
       <div className="flex flex-wrap items-end gap-x-12 gap-y-6">
         <div>
-          <p className="text-[17px] font-medium text-white/70">Your hashrate</p>
+          <p className="t-title3 text-white/70">Your hashrate</p>
           <p className="flex items-baseline gap-3">
-            <Ticker value={hashrate / divisor} format={(n) => n.toFixed(2)} className="gold-text text-[clamp(84px,11vw,176px)] leading-[0.95] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
-            <span className="text-[clamp(22px,2.2vw,32px)] font-semibold tracking-[-0.02em] text-white/70">{unit}</span>
+            <Ticker value={hashrate / divisor} format={(n) => n.toFixed(2)} className="gold-text text-[clamp(52px,5.6vw,80px)] leading-[1] [text-shadow:0_2px_24px_rgb(0_0_0/0.4)]" />
+            <span className="text-[clamp(17px,1.6vw,22px)] font-medium text-white/55">{unit}</span>
           </p>
-          <p className="mt-2 flex items-center gap-2 text-[15px] text-white/60">
+          <p className="mt-2 flex items-center gap-2 text-[13px] text-white/60">
             <StatusDot tone={mining ? 'green' : 'muted'} pulse={mining} />
             {line}
           </p>
@@ -76,9 +76,9 @@ function Hero() {
         </div>
       </div>
 
-      <div className="mt-8 flex flex-wrap items-stretch gap-5">
+      <div className="mt-6 flex flex-wrap items-stretch gap-5">
         <HeroStats />
-        <div className="glass hidden w-[280px] p-3 lg:block">
+        <div className="glass hidden w-[260px] p-3 lg:block">
           <FlightMap active="overview" />
         </div>
       </div>
@@ -101,13 +101,13 @@ function HeroStats() {
   ]
 
   return (
-    <dl className="glass grid flex-1 grid-cols-2 md:max-w-[880px] md:grid-cols-4">
+    <dl className="glass grid flex-1 grid-cols-2 content-center md:max-w-[880px] md:grid-cols-4">
       {stats.map(({ label, value, format, sub }, i) => (
-        <div key={label} className={i > 0 ? 'border-white/10 px-6 py-5 md:border-l' : 'px-6 py-5'}>
-          <dt className="text-[13px] font-medium text-white/55">{label}</dt>
+        <div key={label} className={i > 0 ? 'border-white/[0.08] px-4 py-3 md:border-l' : 'px-4 py-3'}>
+          <dt className="t-subhead secondary">{label}</dt>
           <dd>
-            <Ticker value={value} format={format} className="mt-1.5 block text-[28px] font-semibold tracking-[-0.03em]" />
-            <span className="text-[12.5px] text-white/45">{sub}</span>
+            <Ticker value={value} format={format} className="display mt-1 block text-[22px] font-semibold tabular-nums" />
+            <span className="t-subhead tertiary">{sub}</span>
           </dd>
         </div>
       ))}
@@ -131,12 +131,12 @@ function HashratePanel() {
         ].map(([l, v, c]) => (
           <div key={l}>
             <Label>{l}</Label>
-            <p className={`font-display mt-0.5 text-[17px] font-semibold tabular-nums ${c}`}>{v}</p>
+            <p className={`display mt-0.5 text-[15px] font-semibold tabular-nums ${c}`}>{v}</p>
           </div>
         ))}
       </div>
       <AreaChart data={history} className="h-44" label={(m) => formatHashrate(m)} />
-      <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+      <div className="t-caption tertiary mt-1.5 flex justify-between">
         <span>2 min ago</span>
         <span>1 min ago</span>
         <span>Now</span>
@@ -152,30 +152,30 @@ function NetworkPanel({ onNavigate }: { onNavigate: (id: ScreenId) => void }) {
   const blocks = useMiner((s) => s.blocks)
   const latest = blocks[0]
   return (
-    <Panel title="Network" action={<NavLink onClick={() => onNavigate('network')}>Explore</NavLink>}>
+    <Panel title="Network" action={<NavLink onClick={() => onNavigate('network')}>Details</NavLink>}>
       <dl className="grid grid-cols-2 gap-5">
         <div>
           <Label>Block height</Label>
-          <dd className="font-display mt-1 text-[length:calc(22px*var(--ds))] font-semibold tabular-nums">
+          <dd className="display mt-1 text-[20px] font-semibold tabular-nums">
             <Ticker value={height} format={formatInt} />
           </dd>
         </div>
         <div>
           <Label>Network hashrate</Label>
-          <dd className="font-display mt-1 text-[length:calc(22px*var(--ds))] font-semibold tabular-nums text-accent">{formatHashrate(netHash)}</dd>
+          <dd className="display mt-1 text-[20px] font-semibold tabular-nums text-accent">{formatHashrate(netHash)}</dd>
         </div>
         <div className="col-span-2">
           <Label>Difficulty</Label>
-          <dd className="mt-1 text-[14px] tabular-nums">{difficulty.toLocaleString('en-US', { maximumFractionDigits: 2 })}</dd>
+          <dd className="mt-1 tabular-nums">{difficulty.toLocaleString('en-US', { maximumFractionDigits: 2 })}</dd>
         </div>
       </dl>
       {latest && (
-        <motion.div key={latest.height} initial={{ opacity: 0, y: 8, boxShadow: 'inset 0 0 0 1px rgba(242,182,109,0.9)' }} animate={{ opacity: 1, y: 0, boxShadow: 'inset 0 0 0 1px rgba(234,240,255,0.07)' }} transition={{ duration: 1.4 }} className="mt-6 rounded-2xl bg-[rgb(234_240_255/0.035)] p-4">
-          <p className="flex items-center justify-between text-[13px]">
+        <motion.div key={latest.height} initial={{ opacity: 0, y: 8, boxShadow: 'inset 0 0 0 1px rgba(242,182,109,0.9)' }} animate={{ opacity: 1, y: 0, boxShadow: 'inset 0 0 0 1px rgba(234,240,255,0.07)' }} transition={{ duration: 1.4 }} className="well mt-5 p-3">
+          <p className="flex items-center justify-between">
             <span>Latest block #{formatInt(latest.height)}</span>
-            <span className="text-muted-foreground">{timeAgo(latest.time)}</span>
+            <span className="secondary t-subhead">{timeAgo(latest.time)}</span>
           </p>
-          <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{shortHash(latest.hash, 14, 8)}</p>
+          <p className="mt-1 truncate font-mono t-subhead secondary">{shortHash(latest.hash, 14, 8)}</p>
         </motion.div>
       )}
     </Panel>
@@ -191,18 +191,18 @@ function WalletPanel({ onNavigate }: { onNavigate: (id: ScreenId) => void }) {
   const balance = useMiner((s) => s.wallet.balance)
   const immature = useMiner((s) => s.wallet.immature)
   return (
-    <Panel title="Wallet" action={<NavLink onClick={() => onNavigate('wallet')}>Fly to Titan</NavLink>}>
+    <Panel title="Wallet" action={<NavLink onClick={() => onNavigate('wallet')}>Open Wallet</NavLink>}>
       <Label>Available</Label>
       <p className="mt-1 flex items-baseline gap-2">
-        <Ticker value={balance} format={(n) => formatCoin(n, 4)} className="display text-[length:calc(40px*var(--ds))]" />
-        <span className="font-display text-[length:calc(15px*var(--ds))] text-primary">SAT</span>
+        <Ticker value={balance} format={(n) => formatCoin(n, 4)} className="gold-text text-[34px]" />
+        <span className="secondary text-[15px] font-medium">SAT</span>
       </p>
-      <div className="mt-6 rounded-2xl bg-[rgb(234_240_255/0.035)] p-4 shadow-[inset_0_0_0_1px_rgb(234_240_255/0.07)]">
+      <div className="well mt-5 p-3">
         <Label>Maturing rewards</Label>
-        <p className="font-display mt-1 text-[length:calc(16px*var(--ds))] tabular-nums">
+        <p className="mt-1 text-[15px] font-medium tabular-nums">
           <Ticker value={immature} format={(n) => formatCoin(n, 2)} /> SAT
         </p>
-        <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">Block rewards unlock after 100 confirmations.</p>
+        <p className="t-subhead secondary mt-1">Block rewards unlock after 100 confirmations.</p>
       </div>
     </Panel>
   )

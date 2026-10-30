@@ -57,7 +57,7 @@ export function AreaChart({ data, className, color = 'var(--primary)', height = 
         </circle>
       </svg>
       {label && (
-        <span className="pointer-events-none absolute left-1 top-0 text-[11px] text-muted-foreground">{label(max)}</span>
+        <span className="pointer-events-none absolute left-1 top-0 t-subhead secondary">{label(max)}</span>
       )}
     </div>
   )
@@ -117,11 +117,11 @@ export function Gauge({ value, max, label, display, unit, tone = 'gold', size = 
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
-        <span className="font-display text-[length:calc(19px*var(--ds))] font-semibold tabular-nums text-foreground">
+        <span className="display text-[19px] font-semibold tabular-nums text-foreground">
           {display}
           {unit && <span className="ml-0.5 text-[10px] text-muted-foreground">{unit}</span>}
         </span>
-        <span className="mt-0.5 text-[11px] text-muted-foreground">{label}</span>
+        <span className="mt-0.5 t-subhead secondary">{label}</span>
       </div>
     </div>
   )

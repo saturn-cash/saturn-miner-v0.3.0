@@ -13,20 +13,20 @@ interface PanelProps {
   bodyClassName?: string
 }
 
-/** Glass instrument panel, lit along its upper-left edge by the same sun as Saturn. */
+/** macOS content group: translucent box, 13pt semibold title, 11pt secondary detail. */
 export function Panel({ title, meta, action, children, className, bodyClassName }: PanelProps) {
   return (
     <section className={cn('glass flex flex-col', className)}>
       {title && (
-        <header className="flex items-center justify-between gap-3 px-6 pt-5 md:px-7 md:pt-6">
-          <div className="flex min-w-0 items-baseline gap-2.5">
-            <h2 className="truncate text-[17px] font-semibold tracking-[-0.02em] text-foreground">{title}</h2>
-            {meta && <span className="truncate text-[13px] text-white/50">{meta}</span>}
+        <header className="flex min-h-[40px] items-center justify-between gap-3 px-4 pt-3">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h2 className="t-headline truncate text-foreground">{title}</h2>
+            {meta && <span className="t-subhead secondary truncate">{meta}</span>}
           </div>
           {action}
         </header>
       )}
-      <div className={cn('relative flex-1 p-6 md:p-7', title && 'pt-4 md:pt-4', bodyClassName)}>{children}</div>
+      <div className={cn('relative flex-1 p-4', title && 'pt-2', bodyClassName)}>{children}</div>
     </section>
   )
 }
@@ -40,13 +40,13 @@ export function StatusDot({ tone, pulse }: { tone: 'gold' | 'cyan' | 'red' | 'mu
     green: 'bg-ok',
   }[tone]
   return (
-    <span className="relative inline-flex size-2" aria-hidden="true">
+    <span className="relative inline-flex size-[7px]" aria-hidden="true">
       {pulse && <span className={cn('absolute inset-0 animate-ping rounded-full opacity-70', color)} />}
-      <span className={cn('relative inline-flex size-2 rounded-full', color)} />
+      <span className={cn('relative inline-flex size-[7px] rounded-full', color)} />
     </span>
   )
 }
 
 export function Label({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn('text-[13px] text-white/55', className)}>{children}</p>
+  return <p className={cn('t-subhead secondary', className)}>{children}</p>
 }
