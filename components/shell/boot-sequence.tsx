@@ -78,7 +78,7 @@ export function BootSequence({ onDone, cinematic }: { onDone: () => void; cinema
             {phase === 'checks' ? (
               <motion.div key="checks" className="relative flex w-full max-w-md flex-col items-center px-6" exit={{ opacity: 0, scale: 1.6, filter: 'blur(14px)' }} transition={{ duration: 0.5, ease: 'easeIn' }}>
                 <motion.div initial={{ scale: 0, rotate: -60 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 110, damping: 12 }}>
-                  <SaturnLogo className="size-20 drop-shadow-[0_0_30px_rgb(242_182_109/0.6)]" />
+                  <SaturnLogo className="size-20 drop-shadow-[0_0_24px_rgb(245_185_113/0.35)]" />
                 </motion.div>
                 <motion.h1
                   className="display gold-text mt-6 text-[length:calc(56px*var(--ds))]"

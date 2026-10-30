@@ -76,20 +76,37 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           style={{ width: core, height: core }}
         >
           {/* glow behind the clipped core */}
-          <span aria-hidden="true" className={cn('absolute inset-0 rounded-full blur-2xl transition-opacity duration-700', active ? 'bg-primary/70 opacity-100' : 'bg-white/10 opacity-60 group-hover:opacity-100')} />
-          {/* rim: bright glass edge */}
-          <span aria-hidden="true" className="hex-rim hex absolute inset-0 bg-gradient-to-br from-white/80 via-white/25 to-white/50 transition-colors" />
-          {/* body: clear glass when off, plasma when on */}
-          <span aria-hidden="true" className={cn('hex absolute inset-[2px] backdrop-blur-xl transition-colors duration-700', active ? 'bg-primary' : 'bg-[rgb(28_28_36/0.55)] group-hover:bg-[rgb(40_40_50/0.55)]')} />
           <span
             aria-hidden="true"
-            className={cn('hex absolute inset-[2px] transition-opacity duration-700', active ? 'opacity-100' : 'opacity-0')}
-            style={{ background: 'conic-gradient(from 0deg, #f5b971, #fff1d6, #f0c48a, #ffe9c4, #e0a860, #f5b971)', animation: active ? 'radar-spin 3s linear infinite' : undefined }}
+            className={cn('absolute inset-[-10%] rounded-full blur-2xl transition-opacity duration-700', active ? 'opacity-90' : 'bg-white/10 opacity-60 group-hover:opacity-100')}
+            style={active ? { background: 'conic-gradient(from 90deg, #ffb46c, #ff7bb0, #c48cff, #6cc8ff, #6cf0d0, #ffe36c, #ffb46c)', animation: 'radar-spin 9s linear infinite' } : undefined}
           />
-          <span aria-hidden="true" className={cn('hex absolute inset-[6px] transition-colors duration-700', active ? 'bg-[rgb(28_18_6/0.22)]' : 'bg-transparent')} />
+          {/* rim: bright glass edge */}
+          <span aria-hidden="true" className="hex-rim hex absolute inset-0 bg-gradient-to-br from-white/80 via-white/25 to-white/50 transition-colors" />
+          {/* body: clear glass when off, iridescent plasma when on */}
+          <span aria-hidden="true" className={cn('hex absolute inset-[2px] backdrop-blur-xl transition-colors duration-700', active ? 'bg-[#1a1420]' : 'bg-[rgb(28_28_36/0.55)] group-hover:bg-[rgb(40_40_50/0.55)]')} />
+          <span aria-hidden="true" className={cn('hex absolute inset-[2px] overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : 'opacity-0')}>
+            {/* two soft spectral layers turning against each other read as liquid light, not a colour wheel */}
+            <span
+              className="absolute inset-[-40%] blur-[14px] saturate-[1.15]"
+              style={{
+                background: 'conic-gradient(from 0deg, #ffb46c, #ff7bb0, #c48cff, #6cc8ff, #6cf0d0, #ffe36c, #ffb46c)',
+                animation: active ? 'radar-spin 7s linear infinite' : undefined,
+              }}
+            />
+            <span
+              className="absolute inset-[-30%] blur-[10px] mix-blend-screen opacity-80"
+              style={{
+                background: 'conic-gradient(from 180deg, transparent 0deg, #ffffff 40deg, transparent 90deg, #ff9ad5 150deg, transparent 200deg, #8be0ff 260deg, transparent 320deg)',
+                animation: active ? 'radar-spin 11s linear infinite reverse' : undefined,
+              }}
+            />
+            <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_55%,rgb(255_255_255/0.18),transparent_60%)]" />
+          </span>
+          <span aria-hidden="true" className={cn('hex absolute inset-[6px] transition-colors duration-700', active ? 'bg-[rgb(10_6_16/0.18)]' : 'bg-transparent')} />
           {/* top sheen */}
           <span aria-hidden="true" className="hex absolute inset-[2px] bg-gradient-to-b from-white/20 to-transparent to-45%" />
-          <Power className={cn('relative transition-colors duration-500', size === 'lg' ? 'size-9' : 'size-7', active ? 'text-[#1c1206]' : 'text-white')} strokeWidth={2.4} aria-hidden="true" />
+          <Power className={cn('relative transition-colors duration-500', size === 'lg' ? 'size-9' : 'size-7', active ? 'text-white drop-shadow-[0_1px_6px_rgb(0_0_0/0.6)]' : 'text-white')} strokeWidth={2.4} aria-hidden="true" />
         </motion.button>
       </div>
       <AnimatePresence mode="wait">

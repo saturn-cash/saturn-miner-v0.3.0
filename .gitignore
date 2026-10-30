@@ -1,0 +1,31 @@
+# dependencies
+node_modules
+
+# Next.js build output
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Tauri / Rust build output
+src-tauri/target/
+src-tauri/gen/schemas
+
+# environment
+.env*.local
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# v0 sandbox leftovers
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.design-cache/
+.v0-trash/
+.vercel/
