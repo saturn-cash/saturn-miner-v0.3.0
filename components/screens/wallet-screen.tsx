@@ -36,17 +36,23 @@ export function WalletScreen() {
           <Ticker value={wallet.balance} format={(n) => formatCoin(n, 4)} className="display gold-text text-[clamp(44px,4.8vw,68px)] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
           <span className="text-[clamp(17px,1.6vw,22px)] font-medium text-white/55">SAT</span>
         </p>
-        <dl className="glass-quiet mt-6 grid max-w-[560px] grid-cols-2 gap-px overflow-hidden !rounded-xl backdrop-blur-xl">
+        <dl className="glass-quiet mt-6 grid max-w-[720px] grid-cols-3 gap-px overflow-hidden !rounded-xl backdrop-blur-xl">
           <div className="bg-[rgb(28_28_30/0.6)] px-5 py-4">
             <dt className="t-subhead secondary">Maturing</dt>
             <dd className="display mt-1 text-[18px] tabular-nums">
               <Ticker value={wallet.immature} format={(n) => formatCoin(n, 4)} /> SAT
             </dd>
           </div>
+          <div className="bg-[rgb(28_28_30/0.6)] px-5 py-4" title="Credited to your payout address by Saturn Pool, paid out once the block rewards mature">
+            <dt className="t-subhead secondary">Pool pending</dt>
+            <dd className="display mt-1 text-[18px] tabular-nums">
+              <Ticker value={wallet.poolPending} format={(n) => formatCoin(n, 4)} /> SAT
+            </dd>
+          </div>
           <div className="bg-[rgb(28_28_30/0.6)] px-5 py-4">
             <dt className="t-subhead secondary">Total</dt>
             <dd className="display mt-1 text-[18px] tabular-nums">
-              <Ticker value={wallet.balance + wallet.immature} format={(n) => formatCoin(n, 4)} /> SAT
+              <Ticker value={wallet.balance + wallet.immature + wallet.poolPending} format={(n) => formatCoin(n, 4)} /> SAT
             </dd>
           </div>
         </dl>

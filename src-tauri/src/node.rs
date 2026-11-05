@@ -279,3 +279,67 @@ pub async fn node_snapshot(auth: NodeAuth, payout_address: Option<String>) -> No
     }
     snap
 }
+
+/* ------------------------------------------------------------------ */
+/* Saturn Pool public API: network numbers and pool earnings without   */
+/* a local node                                                        */
+/* ------------------------------------------------------------------ */
+
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PoolSnapshot {
+    pub reachable: bool,
+    pub error: Option<String>,
+    pub height: u64,
+    pub difficulty: f64,
+    pub network_hashrate: f64,
+    pub pool_hashrate: f64,
+    pub miners: u64,
+    pub blocks: Vec<Value>,
+    /// SAT credited to this address and waiting for payout
+    pub pending: f64,
+    /// difficulty-weighted shares this address has submitted
+    pub work: f64,
+    pub blocks_found: u64,
+    pub last_share: Option<String>,
+}
+
+/// `api` is the pool's stats endpoint, e.g. http://pool.saturn.boats:8081
+#[tauri::command]
+pub async fn pool_snapshot(api: String, address: Option<String>) -> PoolSnapshot {
+    let api = api.trim_end_matches('/').to_string();
+    let client = match reqwest::Client::builder().timeout(Duration::from_secs(8)).build() {
+        Ok(c) => c,
+        Err(e) => return PoolSnapshot { error: Some(e.to_string()), ..Default::default() },
+    };
+    let stats: Value = match client.get(format!("{api}/stats")).send().await {
+        Ok(r) => match r.json().await {
+            Ok(v) => v,
+            Err(e) => return PoolSnapshot { error: Some(format!("pool answered with something unexpected: {e}")), ..Default::default() },
+        },
+        Err(e) => return PoolSnapshot { error: Some(format!("can't reach the pool: {e}")), ..Default::default() },
+    };
+    let net = &stats["network"];
+    let mut snap = PoolSnapshot {
+        reachable: true,
+        height: net["blocks"].as_u64().unwrap_or(0),
+        difficulty: net["difficulty"].as_f64().unwrap_or(0.0),
+        network_hashrate: net["hashrate"].as_f64().unwrap_or(0.0),
+        pool_hashrate: stats["hashrate"].as_f64().unwrap_or(0.0),
+        miners: stats["connected"].as_array().map(|a| a.len() as u64).unwrap_or(0),
+        blocks: stats["blocks"].as_array().cloned().unwrap_or_default(),
+        ..Default::default()
+    };
+    if let Some(addr) = address.map(|a| a.trim().to_lowercase()).filter(|a| a.starts_with("sat1")) {
+        let addr = addr.split('.').next().unwrap_or("").to_string();
+        if let Ok(r) = client.get(format!("{api}/stats/{addr}")).send().await {
+            if let Ok(v) = r.json::<Value>().await {
+                snap.pending = v["pendingPayout"].as_f64().unwrap_or(0.0);
+                snap.work = v["shares"].as_f64().unwrap_or(0.0);
+                snap.blocks_found = v["blocksFound"].as_u64().unwrap_or(0);
+                snap.last_share = v["lastShare"].as_str().map(String::from);
+            }
+        }
+    }
+    snap
+}

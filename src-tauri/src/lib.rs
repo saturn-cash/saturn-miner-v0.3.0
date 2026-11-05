@@ -15,7 +15,7 @@ fn backend_info() -> Value {
 pub fn run() {
     tauri::Builder::default()
         .manage(miner::MinerHandle::default())
-        .invoke_handler(tauri::generate_handler![backend_info, bitaxe::bitaxe_request, bitaxe::bitaxe_scan, miner::start_mining, miner::stop_mining, miner::get_telemetry, node::node_rpc, node::node_snapshot])
+        .invoke_handler(tauri::generate_handler![backend_info, bitaxe::bitaxe_request, bitaxe::bitaxe_scan, miner::start_mining, miner::stop_mining, miner::get_telemetry, node::node_rpc, node::node_snapshot, node::pool_snapshot])
         .run(tauri::generate_context!())
         .expect("error while running Saturn Miner");
 }
