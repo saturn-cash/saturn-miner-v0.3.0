@@ -27,10 +27,22 @@ export interface SentTx {
   time: number
 }
 
+export interface WalletSummary {
+  id: string
+  name: string
+  /** "phrase" (recovery phrase), "xprv" (imported from Saturn Core) or "key" (one private key) */
+  kind: 'phrase' | 'xprv' | 'key'
+  address: string
+}
+
 export interface WalletState {
   available: boolean // false in the browser preview
   loaded: boolean
   exists: boolean
+  wallets: WalletSummary[]
+  active: string | null
+  /** receive addresses handed out by the active wallet, oldest first */
+  addresses: string[]
   address: string | null
   storage: 'keychain' | 'file' | null
   spendableSats: number
@@ -56,6 +68,9 @@ let state: WalletState = {
   available: false,
   loaded: false,
   exists: false,
+  wallets: [],
+  active: null,
+  addresses: [],
   address: null,
   storage: null,
   spendableSats: 0,
@@ -113,9 +128,15 @@ function adoptAsPayout(address: string, force = false) {
 export const walletActions = {
   async load() {
     try {
-      const info = await invokeCommand<{ exists: boolean; address: string | null; storage: 'keychain' | 'file' }>(TAURI_COMMANDS.walletInfo)
-      set({ loaded: true, exists: info.exists, address: info.address, storage: info.storage, error: null })
-      if (info.exists) void walletActions.refresh()
+      const info = await invokeCommand<{ exists: boolean; active: string | null; wallets: WalletSummary[]; address: string | null; storage: 'keychain' | 'file' }>(TAURI_COMMANDS.walletInfo)
+      set({ loaded: true, exists: info.exists, wallets: info.wallets, active: info.active, address: info.address, storage: info.storage, error: null })
+      if (info.exists) {
+        const rows = await invokeCommand<Array<{ address: string; index: number }>>(TAURI_COMMANDS.walletAddresses).catch(() => [])
+        set({ addresses: rows.map((r) => r.address) })
+        void walletActions.refresh()
+      } else {
+        set({ addresses: [], spendableSats: 0, immatureSats: 0, coins: [] })
+      }
     } catch (err) {
       set({ loaded: true, error: String(err) })
     }
@@ -133,19 +154,37 @@ export const walletActions = {
     }
   },
   /** Returns the recovery phrase, to be shown once and written down. */
-  async create(words: 12 | 24 = 12) {
-    const r = await invokeCommand<{ phrase: string; address: string }>(TAURI_COMMANDS.walletCreate, { words })
-    set({ exists: true, address: r.address })
+  async create(name?: string, words: 12 | 24 = 12) {
+    const r = await invokeCommand<{ id: string; phrase: string; address: string }>(TAURI_COMMANDS.walletCreate, { name: name || null, words })
     adoptAsPayout(r.address)
-    void walletActions.refresh()
+    await walletActions.load()
     return r
   },
-  async restore(phrase: string) {
-    const address = await invokeCommand<string>(TAURI_COMMANDS.walletImport, { phrase })
-    set({ exists: true, address })
-    adoptAsPayout(address)
-    void walletActions.refresh()
-    return address
+  /** A recovery phrase, a Saturn Core descriptor/xprv (listdescriptors true), or a WIF private key. */
+  async restore(secret: string, name?: string) {
+    const r = await invokeCommand<{ id: string; kind: string; address: string }>(TAURI_COMMANDS.walletImport, { secret, name: name || null })
+    adoptAsPayout(r.address)
+    await walletActions.load()
+    return r
+  },
+  async select(id: string) {
+    if (id === state.active) return
+    await invokeCommand(TAURI_COMMANDS.walletSelect, { id })
+    set({ spendableSats: 0, immatureSats: 0, coins: [] })
+    await walletActions.load()
+  },
+  async rename(id: string, name: string) {
+    await invokeCommand(TAURI_COMMANDS.walletRename, { id, name })
+    await walletActions.load()
+  },
+  async newAddress() {
+    const r = await invokeCommand<{ address: string; index: number }>(TAURI_COMMANDS.walletNewAddress)
+    set({ addresses: [...state.addresses, r.address] })
+    return r.address
+  },
+  /** Mine to a specific address of any wallet. */
+  mineTo(address: string) {
+    adoptAsPayout(address, true)
   },
   reveal: () => invokeCommand<string>(TAURI_COMMANDS.walletReveal),
   descriptors: () => invokeCommand<{ receive: string; change: string; import: string }>(TAURI_COMMANDS.walletDescriptors),
@@ -154,8 +193,9 @@ export const walletActions = {
     if (state.address) adoptAsPayout(state.address, true)
   },
   async remove() {
-    await invokeCommand(TAURI_COMMANDS.walletDelete)
-    set({ exists: false, address: null, spendableSats: 0, immatureSats: 0, coins: [] })
+    await invokeCommand(TAURI_COMMANDS.walletDelete, { id: state.active })
+    set({ spendableSats: 0, immatureSats: 0, coins: [] })
+    await walletActions.load()
   },
   /** amountSats null sends everything spendable */
   async send(to: string, amountSats: number | null, feeRate = 2) {

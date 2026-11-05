@@ -100,9 +100,14 @@ function FleetHero({ totals, onAdd, hasDevices }: { totals: ReturnType<typeof fl
     setScanning(true)
     setScanMsg(null)
     try {
-      const found = await bitaxe.scan()
-      found.forEach((h) => fleet.add(h))
-      setScanMsg(found.length ? `Found ${found.length} Bitaxe${found.length > 1 ? 's' : ''}` : 'No Bitaxes answered on this network')
+      // common AxeOS hostnames, so a Bitaxe on a router that names its devices is found by name too
+      const r = await bitaxe.scan(['bitaxe', 'miner', 'miner1', 'miner2', 'bitaxe.local'])
+      r.found.forEach((h) => fleet.add(h))
+      setScanMsg(
+        r.found.length
+          ? `Found ${r.found.map((h, i) => `${r.names[i]} (${h})`).join(', ')}`
+          : `No Bitaxe answered on ${r.networks.length} networks (${r.networks.slice(0, 3).join(', ')}…). If yours is on a different Wi-Fi, use Add a Bitaxe with the IP shown in the Bitaxe app.`,
+      )
     } catch (e) {
       setScanMsg(e instanceof Error ? e.message : String(e))
     } finally {

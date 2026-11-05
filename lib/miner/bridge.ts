@@ -45,4 +45,8 @@ export const TAURI_COMMANDS = {
   walletBalance: 'wallet_balance',
   walletSend: 'wallet_send',
   walletCheckAddress: 'wallet_check_address',
+  walletSelect: 'wallet_select',
+  walletRename: 'wallet_rename',
+  walletAddresses: 'wallet_addresses',
+  walletNewAddress: 'wallet_new_address',
 } as const

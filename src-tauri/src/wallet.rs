@@ -1,21 +1,28 @@
-//! In-app Saturn wallet.
+//! In-app Saturn wallets.
 //!
-//! A BIP39 recovery phrase is the only secret. Keys follow BIP84 (m/84'/0'/0'), so the same coins can
-//! be imported into Saturn Core with the descriptors this module exports. Addresses are native SegWit
-//! (P2WPKH) with Saturn's `sat` prefix.
+//! Saturn can hold several wallets and switch between them. Each wallet is one secret:
+//!   - a BIP39 recovery phrase (created here or restored), keys on BIP84 m/84'/0'/0';
+//!   - a Saturn Core key: the `wpkh(xprv…/84h/0h/0h/0/*)` descriptor from `listdescriptors true`
+//!     or a bare xprv, so the coins of a Saturn Core wallet (e.g. the address a Bitaxe already
+//!     mines to) can be spent here;
+//!   - a single private key (WIF), for one address.
+//! Phrase and xprv wallets hand out as many addresses as you like (a fresh one per payer is good
+//! practice); a single key has exactly one. Addresses are native SegWit (P2WPKH) with the `sat`
+//! prefix, so any of them can be used as a mining payout address.
 //!
-//! The wallet needs no local node: balances come from Saturn Pool's `/utxos` endpoint (the pool's
-//! Saturn Core scans the UTXO set) and signed transactions are relayed through `/broadcast`. Every
-//! transaction is built and signed here; the recovery phrase never leaves the computer.
+//! No local node is needed: balances come from Saturn Pool's `/utxos` endpoint and signed
+//! transactions are relayed through `/broadcast`. Signing happens here; secrets never leave the
+//! computer. Secrets live in the OS keychain on macOS/Windows and in user-only files on Linux; the
+//! list of wallets (names, kinds, how many addresses were handed out) is a plain JSON file.
 
 use bitcoin::bech32::{segwit, Hrp};
 use bitcoin::bip32::{DerivationPath, Xpriv};
 use bitcoin::hashes::Hash;
-use bitcoin::secp256k1::{All, Message, Secp256k1};
+use bitcoin::secp256k1::{All, Message, Secp256k1, SecretKey};
 use bitcoin::sighash::{EcdsaSighashType, SighashCache};
-use bitcoin::{absolute, transaction, Amount, CompressedPublicKey, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness, WitnessProgram, WitnessVersion};
+use bitcoin::{absolute, transaction, Amount, CompressedPublicKey, Network, OutPoint, PrivateKey, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness, WitnessProgram, WitnessVersion};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
@@ -23,13 +30,10 @@ use tauri::{AppHandle, Manager};
 const HRP: &str = "sat";
 /// BIP84 account; Saturn Core uses coin type 0' on mainnet too
 const ACCOUNT: &str = "m/84'/0'/0'";
-const RECEIVE_SCAN: u32 = 20;
+/// unused addresses watched past the last one handed out (BIP44's gap limit)
+const GAP: u32 = 20;
 const CHANGE_SCAN: u32 = 5;
 const DUST_SATS: u64 = 546;
-
-/* ------------------------------------------------------------------ */
-/* storage                                                             */
-/* ------------------------------------------------------------------ */
 
 /// Address prefix. Tests can point it at a regtest chain (`bcrt`) with SATURN_TEST_HRP.
 fn hrp() -> String {
@@ -40,6 +44,10 @@ fn hrp() -> String {
     HRP.to_string()
 }
 
+/* ------------------------------------------------------------------ */
+/* storage                                                             */
+/* ------------------------------------------------------------------ */
+
 fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -48,23 +56,25 @@ fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 mod secret {
+    use std::path::Path;
     const SERVICE: &str = "Saturn";
-    const USER: &str = "wallet-recovery-phrase";
-    fn entry() -> Result<keyring::Entry, String> {
-        keyring::Entry::new(SERVICE, USER).map_err(|e| e.to_string())
+    fn entry(id: &str) -> Result<keyring::Entry, String> {
+        // the first wallet, from Saturn 0.6.0, kept its original keychain name
+        let user = if id == "main" { "wallet-recovery-phrase".to_string() } else { format!("wallet-{id}") };
+        keyring::Entry::new(SERVICE, &user).map_err(|e| e.to_string())
     }
-    pub fn load(_dir: &std::path::Path) -> Result<Option<String>, String> {
-        match entry()?.get_password() {
+    pub fn load(_dir: &Path, id: &str) -> Result<Option<String>, String> {
+        match entry(id)?.get_password() {
             Ok(s) => Ok(Some(s)),
             Err(keyring::Error::NoEntry) => Ok(None),
             Err(e) => Err(format!("couldn't read the wallet from the keychain: {e}")),
         }
     }
-    pub fn save(_dir: &std::path::Path, phrase: &str) -> Result<(), String> {
-        entry()?.set_password(phrase).map_err(|e| format!("couldn't save the wallet to the keychain: {e}"))
+    pub fn save(_dir: &Path, id: &str, secret: &str) -> Result<(), String> {
+        entry(id)?.set_password(secret).map_err(|e| format!("couldn't save the wallet to the keychain: {e}"))
     }
-    pub fn delete(_dir: &std::path::Path) -> Result<(), String> {
-        match entry()?.delete_credential() {
+    pub fn delete(_dir: &Path, id: &str) -> Result<(), String> {
+        match entry(id)?.delete_credential() {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(e.to_string()),
         }
@@ -74,18 +84,23 @@ mod secret {
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod secret {
-    use std::path::Path;
-    fn file(dir: &Path) -> std::path::PathBuf {
-        dir.join("wallet.seed")
+    use std::path::{Path, PathBuf};
+    fn file(dir: &Path, id: &str) -> PathBuf {
+        // the first wallet, from Saturn 0.6.0, kept its original file name
+        if id == "main" {
+            dir.join("wallet.seed")
+        } else {
+            dir.join(format!("wallet-{id}.seed"))
+        }
     }
-    pub fn load(dir: &Path) -> Result<Option<String>, String> {
-        match std::fs::read_to_string(file(dir)) {
+    pub fn load(dir: &Path, id: &str) -> Result<Option<String>, String> {
+        match std::fs::read_to_string(file(dir, id)) {
             Ok(s) => Ok(Some(s.trim().to_string())),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e.to_string()),
         }
     }
-    pub fn save(dir: &Path, phrase: &str) -> Result<(), String> {
+    pub fn save(dir: &Path, id: &str, secret: &str) -> Result<(), String> {
         use std::io::Write;
         #[cfg(unix)]
         use std::os::unix::fs::OpenOptionsExt;
@@ -93,11 +108,11 @@ mod secret {
         opts.write(true).create(true).truncate(true);
         #[cfg(unix)]
         opts.mode(0o600);
-        let mut f = opts.open(file(dir)).map_err(|e| e.to_string())?;
-        f.write_all(phrase.as_bytes()).map_err(|e| e.to_string())
+        let mut f = opts.open(file(dir, id)).map_err(|e| e.to_string())?;
+        f.write_all(secret.as_bytes()).map_err(|e| e.to_string())
     }
-    pub fn delete(dir: &Path) -> Result<(), String> {
-        match std::fs::remove_file(file(dir)) {
+    pub fn delete(dir: &Path, id: &str) -> Result<(), String> {
+        match std::fs::remove_file(file(dir, id)) {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
             Err(e) => Err(e.to_string()),
@@ -106,37 +121,164 @@ mod secret {
     pub const KIND: &str = "file";
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletMeta {
+    id: String,
+    name: String,
+    /// "phrase", "xprv" or "key"
+    kind: String,
+    /// receive addresses handed out so far (always at least 1)
+    receive_count: u32,
+    created: u64,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct Registry {
+    active: Option<String>,
+    wallets: Vec<WalletMeta>,
+}
+
+fn registry_path(dir: &Path) -> PathBuf {
+    dir.join("wallets.json")
+}
+
+fn load_registry(dir: &Path) -> Result<Registry, String> {
+    let mut reg: Registry = match std::fs::read_to_string(registry_path(dir)) {
+        Ok(s) => serde_json::from_str(&s).map_err(|e| e.to_string())?,
+        Err(_) => Registry::default(),
+    };
+    // a wallet made by Saturn 0.6.0 has a secret but no registry yet: adopt it as "Main"
+    if reg.wallets.is_empty() && secret::load(dir, "main")?.is_some() {
+        reg.wallets.push(WalletMeta { id: "main".into(), name: "Main".into(), kind: "phrase".into(), receive_count: 1, created: now() });
+        reg.active = Some("main".into());
+        save_registry(dir, &reg)?;
+    }
+    if reg.active.as_ref().map_or(true, |a| !reg.wallets.iter().any(|w| &w.id == a)) {
+        reg.active = reg.wallets.first().map(|w| w.id.clone());
+    }
+    Ok(reg)
+}
+
+fn save_registry(dir: &Path, reg: &Registry) -> Result<(), String> {
+    let text = serde_json::to_string_pretty(reg).map_err(|e| e.to_string())?;
+    std::fs::write(registry_path(dir), text).map_err(|e| e.to_string())
+}
+
+fn now() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+fn new_id() -> String {
+    let n: u64 = rand_u64();
+    format!("{n:016x}")
+}
+
+fn rand_u64() -> u64 {
+    use bitcoin::secp256k1::rand::RngCore;
+    bitcoin::secp256k1::rand::thread_rng().next_u64()
+}
+
 /* ------------------------------------------------------------------ */
 /* keys and addresses                                                  */
 /* ------------------------------------------------------------------ */
 
+enum Source {
+    /// BIP84 account key: addresses at m/…/{0,1}/i
+    Account(Xpriv),
+    /// one key, one address
+    Single(SecretKey),
+}
+
 struct Keys {
     secp: Secp256k1<All>,
-    master: Xpriv,
-    account: Xpriv,
+    /// the master key, when there is one (for exporting descriptors)
+    master: Option<Xpriv>,
+    source: Source,
 }
 
 impl Keys {
-    fn from_phrase(phrase: &str) -> Result<Keys, String> {
-        let mnemonic = bip39::Mnemonic::parse_normalized(phrase.trim()).map_err(|e| format!("That recovery phrase isn't valid: {e}"))?;
-        let seed = mnemonic.to_seed("");
+    /// Recognises a recovery phrase, a Saturn Core descriptor or xprv, or a WIF private key.
+    fn from_secret(secret: &str) -> Result<(Keys, &'static str), String> {
+        let mut s = secret.trim();
         let secp = Secp256k1::new();
+        // pasted `listdescriptors true` output holds several descriptors (pkh, sh(wpkh), wpkh, tr):
+        // use the native SegWit receive one
+        if s.matches("xprv").count() > 1 {
+            let pick = s.match_indices("wpkh(").filter(|(i, _)| !s[..*i].ends_with("sh(")).map(|(i, _)| &s[i..]).find(|d| {
+                let line = d.split('"').next().unwrap_or(d);
+                line.contains("xprv") && !line.contains("/1/*")
+            });
+            s = pick.map(|d| d.split('"').next().unwrap_or(d)).ok_or("Couldn't find a wpkh(…) descriptor in what you pasted.")?;
+        }
+        // Saturn Core descriptor: wpkh(xprv…/84h/0h/0h/0/*)#chk  or  wpkh([fp/84h/0h/0h]xprv…/0/*)
+        if let Some(start) = s.find("xprv") {
+            let rest = &s[start..];
+            let end = rest.find(|c: char| !c.is_ascii_alphanumeric()).unwrap_or(rest.len());
+            let xprv = Xpriv::from_str(&rest[..end]).map_err(|e| format!("That xprv isn't valid: {e}"))?;
+            let path = &rest[end..];
+            let has_origin = s[..start].contains('[');
+            let account = if has_origin {
+                // the xprv is already the account key
+                xprv
+            } else if path.starts_with("/84h/0h/0h") || path.starts_with("/84'/0'/0'") || path.is_empty() {
+                let p = DerivationPath::from_str(ACCOUNT).map_err(|e| e.to_string())?;
+                xprv.derive_priv(&secp, &p).map_err(|e| e.to_string())?
+            } else {
+                return Err("Only native SegWit (wpkh, m/84h/0h/0h) Saturn Core keys can be imported.".into());
+            };
+            let master = if has_origin { None } else { Some(xprv) };
+            return Ok((Keys { secp, master, source: Source::Account(account) }, "xprv"));
+        }
+        // single private key (WIF): 51-52 base58 characters starting with 5, K or L
+        if !s.contains(' ') && (50..=52).contains(&s.len()) {
+            let pk = PrivateKey::from_wif(s).map_err(|e| format!("That private key isn't valid: {e}"))?;
+            return Ok((Keys { secp, master: None, source: Source::Single(pk.inner) }, "key"));
+        }
+        let normalized = s.split_whitespace().map(|w| w.to_lowercase()).collect::<Vec<_>>().join(" ");
+        let mnemonic = bip39::Mnemonic::parse_normalized(&normalized).map_err(|e| format!("That recovery phrase isn't valid: {e}"))?;
+        let seed = mnemonic.to_seed("");
         let master = Xpriv::new_master(Network::Bitcoin, &seed).map_err(|e| e.to_string())?;
         let path = DerivationPath::from_str(ACCOUNT).map_err(|e| e.to_string())?;
         let account = master.derive_priv(&secp, &path).map_err(|e| e.to_string())?;
-        Ok(Keys { secp, master, account })
+        Ok((Keys { secp, master: Some(master), source: Source::Account(account) }, "phrase"))
     }
 
-    fn key(&self, change: bool, index: u32) -> Result<(bitcoin::secp256k1::SecretKey, CompressedPublicKey), String> {
-        let path = DerivationPath::from_str(&format!("m/{}/{}", u32::from(change), index)).map_err(|e| e.to_string())?;
-        let child = self.account.derive_priv(&self.secp, &path).map_err(|e| e.to_string())?;
-        let pk = CompressedPublicKey::from_private_key(&self.secp, &child.to_priv()).map_err(|e| e.to_string())?;
-        Ok((child.private_key, pk))
+    fn key(&self, change: bool, index: u32) -> Result<(SecretKey, CompressedPublicKey), String> {
+        let sk = match &self.source {
+            Source::Single(sk) => *sk,
+            Source::Account(account) => {
+                let path = DerivationPath::from_str(&format!("m/{}/{}", u32::from(change), index)).map_err(|e| e.to_string())?;
+                account.derive_priv(&self.secp, &path).map_err(|e| e.to_string())?.private_key
+            }
+        };
+        let pk = CompressedPublicKey::from_private_key(&self.secp, &PrivateKey::new(sk, Network::Bitcoin)).map_err(|e| e.to_string())?;
+        Ok((sk, pk))
     }
 
     fn address(&self, change: bool, index: u32) -> Result<String, String> {
         let (_, pk) = self.key(change, index)?;
         encode_p2wpkh(&pk)
+    }
+
+    fn single(&self) -> bool {
+        matches!(self.source, Source::Single(_))
+    }
+
+    /// every address to watch, with its chain and index
+    fn watched(&self, receive_count: u32) -> Result<Vec<(String, bool, u32)>, String> {
+        if self.single() {
+            return Ok(vec![(self.address(false, 0)?, false, 0)]);
+        }
+        let mut out = Vec::new();
+        for i in 0..receive_count.max(1) + GAP {
+            out.push((self.address(false, i)?, false, i));
+        }
+        for i in 0..CHANGE_SCAN {
+            out.push((self.address(true, i)?, true, i));
+        }
+        Ok(out)
     }
 }
 
@@ -206,84 +348,204 @@ fn descriptor_checksum(desc: &str) -> String {
 }
 
 /* ------------------------------------------------------------------ */
-/* commands                                                            */
+/* wallet list                                                         */
 /* ------------------------------------------------------------------ */
+
+struct Active {
+    dir: PathBuf,
+    reg: Registry,
+    meta: WalletMeta,
+    keys: Keys,
+}
+
+fn active(app: &AppHandle) -> Result<Active, String> {
+    let dir = data_dir(app)?;
+    let reg = load_registry(&dir)?;
+    let id = reg.active.clone().ok_or("There's no wallet yet. Create one first.")?;
+    let meta = reg.wallets.iter().find(|w| w.id == id).cloned().ok_or("That wallet is gone.")?;
+    let secret = secret::load(&dir, &id)?.ok_or("This wallet's key is missing from the keychain.")?;
+    let (keys, _) = Keys::from_secret(&secret)?;
+    Ok(Active { dir, reg, meta, keys })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletSummary {
+    id: String,
+    name: String,
+    kind: String,
+    /// the wallet's first address
+    address: String,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WalletInfo {
     exists: bool,
+    active: Option<String>,
+    wallets: Vec<WalletSummary>,
+    /// the active wallet's first address
     address: Option<String>,
-    change_address: Option<String>,
-    /// where the recovery phrase is kept: "keychain" or "file"
+    /// where secrets are kept: "keychain" or "file"
     storage: &'static str,
-}
-
-fn load_keys(app: &AppHandle) -> Result<Option<Keys>, String> {
-    let dir = data_dir(app)?;
-    match secret::load(&dir)? {
-        Some(p) => Ok(Some(Keys::from_phrase(&p)?)),
-        None => Ok(None),
-    }
-}
-
-fn require_keys(app: &AppHandle) -> Result<Keys, String> {
-    load_keys(app)?.ok_or_else(|| "There's no wallet yet. Create one first.".to_string())
 }
 
 #[tauri::command]
 pub fn wallet_info(app: AppHandle) -> Result<WalletInfo, String> {
-    let keys = load_keys(&app)?;
-    Ok(WalletInfo {
-        exists: keys.is_some(),
-        address: keys.as_ref().map(|k| k.address(false, 0)).transpose()?,
-        change_address: keys.as_ref().map(|k| k.address(true, 0)).transpose()?,
-        storage: secret::KIND,
-    })
+    let dir = data_dir(&app)?;
+    let reg = load_registry(&dir)?;
+    let mut wallets = Vec::new();
+    for w in &reg.wallets {
+        let address = match secret::load(&dir, &w.id)? {
+            Some(s) => Keys::from_secret(&s).and_then(|(k, _)| k.address(false, 0)).unwrap_or_default(),
+            None => String::new(),
+        };
+        wallets.push(WalletSummary { id: w.id.clone(), name: w.name.clone(), kind: w.kind.clone(), address });
+    }
+    let address = reg.active.as_ref().and_then(|a| wallets.iter().find(|w| &w.id == a)).map(|w| w.address.clone());
+    Ok(WalletInfo { exists: !wallets.is_empty(), active: reg.active.clone(), wallets, address, storage: secret::KIND })
+}
+
+fn add_wallet(app: &AppHandle, name: Option<String>, secret_text: &str) -> Result<(String, String), String> {
+    let (keys, kind) = Keys::from_secret(secret_text)?;
+    let address = keys.address(false, 0)?;
+    let dir = data_dir(app)?;
+    let mut reg = load_registry(&dir)?;
+    // the same keys twice would only confuse balances
+    for w in &reg.wallets {
+        if let Some(s) = secret::load(&dir, &w.id)? {
+            if Keys::from_secret(&s).and_then(|(k, _)| k.address(false, 0)).ok().as_deref() == Some(address.as_str()) {
+                return Err(format!("This wallet is already in Saturn as \"{}\".", w.name));
+            }
+        }
+    }
+    let id = if reg.wallets.is_empty() && secret::load(&dir, "main")?.is_none() { "main".to_string() } else { new_id() };
+    let stored = if kind == "phrase" { secret_text.split_whitespace().map(|w| w.to_lowercase()).collect::<Vec<_>>().join(" ") } else { secret_text.trim().to_string() };
+    secret::save(&dir, &id, &stored)?;
+    let default_name = match kind {
+        "xprv" => "Saturn Core wallet",
+        "key" => "Imported address",
+        _ if reg.wallets.is_empty() => "Main",
+        _ => "Wallet",
+    };
+    let name = name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()).unwrap_or_else(|| {
+        let n = reg.wallets.iter().filter(|w| w.name.starts_with(default_name)).count();
+        if n == 0 { default_name.to_string() } else { format!("{default_name} {}", n + 1) }
+    });
+    reg.wallets.push(WalletMeta { id: id.clone(), name, kind: kind.to_string(), receive_count: 1, created: now() });
+    reg.active = Some(id.clone());
+    save_registry(&dir, &reg)?;
+    Ok((id, address))
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Created {
+    id: String,
     phrase: String,
     address: String,
 }
 
 #[tauri::command]
-pub fn wallet_create(app: AppHandle, words: Option<usize>) -> Result<Created, String> {
-    if load_keys(&app)?.is_some() {
-        return Err("A wallet already exists on this computer.".into());
-    }
-    let words = match words.unwrap_or(12) {
-        24 => 24,
-        _ => 12,
-    };
-    let mnemonic = bip39::Mnemonic::generate(words).map_err(|e| e.to_string())?;
-    let phrase = mnemonic.to_string();
-    let keys = Keys::from_phrase(&phrase)?;
-    secret::save(&data_dir(&app)?, &phrase)?;
-    Ok(Created { address: keys.address(false, 0)?, phrase })
+pub fn wallet_create(app: AppHandle, name: Option<String>, words: Option<usize>) -> Result<Created, String> {
+    let words = if words == Some(24) { 24 } else { 12 };
+    let phrase = bip39::Mnemonic::generate(words).map_err(|e| e.to_string())?.to_string();
+    let (id, address) = add_wallet(&app, name, &phrase)?;
+    Ok(Created { id, phrase, address })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Imported {
+    id: String,
+    kind: String,
+    address: String,
+}
+
+/// Add a wallet from a recovery phrase, a Saturn Core descriptor/xprv, or a WIF private key.
+#[tauri::command]
+pub fn wallet_import(app: AppHandle, secret: String, name: Option<String>) -> Result<Imported, String> {
+    let (_, kind) = Keys::from_secret(&secret)?;
+    let (id, address) = add_wallet(&app, name, &secret)?;
+    Ok(Imported { id, kind: kind.to_string(), address })
 }
 
 #[tauri::command]
-pub fn wallet_import(app: AppHandle, phrase: String) -> Result<String, String> {
-    if load_keys(&app)?.is_some() {
-        return Err("A wallet already exists on this computer. Remove it first.".into());
+pub fn wallet_select(app: AppHandle, id: String) -> Result<(), String> {
+    let dir = data_dir(&app)?;
+    let mut reg = load_registry(&dir)?;
+    if !reg.wallets.iter().any(|w| w.id == id) {
+        return Err("That wallet is gone.".into());
     }
-    let normalized = phrase.split_whitespace().map(|w| w.to_lowercase()).collect::<Vec<_>>().join(" ");
-    let keys = Keys::from_phrase(&normalized)?;
-    secret::save(&data_dir(&app)?, &normalized)?;
-    keys.address(false, 0)
+    reg.active = Some(id);
+    save_registry(&dir, &reg)
 }
 
+#[tauri::command]
+pub fn wallet_rename(app: AppHandle, id: String, name: String) -> Result<(), String> {
+    let dir = data_dir(&app)?;
+    let mut reg = load_registry(&dir)?;
+    let w = reg.wallets.iter_mut().find(|w| w.id == id).ok_or("That wallet is gone.")?;
+    let n = name.trim();
+    if n.is_empty() {
+        return Err("Give the wallet a name.".into());
+    }
+    w.name = n.chars().take(40).collect();
+    save_registry(&dir, &reg)
+}
+
+/// The active wallet's secret, for backing it up.
 #[tauri::command]
 pub fn wallet_reveal(app: AppHandle) -> Result<String, String> {
-    secret::load(&data_dir(&app)?)?.ok_or_else(|| "There's no wallet yet.".into())
+    let a = active(&app)?;
+    secret::load(&a.dir, &a.meta.id)?.ok_or_else(|| "This wallet's key is missing.".into())
 }
 
+/// Removes the active wallet from this computer (the coins stay on the network).
 #[tauri::command]
-pub fn wallet_delete(app: AppHandle) -> Result<(), String> {
-    secret::delete(&data_dir(&app)?)
+pub fn wallet_delete(app: AppHandle, id: Option<String>) -> Result<(), String> {
+    let dir = data_dir(&app)?;
+    let mut reg = load_registry(&dir)?;
+    let id = id.or(reg.active.clone()).ok_or("There's no wallet to remove.")?;
+    secret::delete(&dir, &id)?;
+    reg.wallets.retain(|w| w.id != id);
+    if reg.active.as_deref() == Some(id.as_str()) {
+        reg.active = reg.wallets.first().map(|w| w.id.clone());
+    }
+    save_registry(&dir, &reg)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddressRow {
+    address: String,
+    index: u32,
+}
+
+/// Receive addresses handed out so far, newest last.
+#[tauri::command]
+pub fn wallet_addresses(app: AppHandle) -> Result<Vec<AddressRow>, String> {
+    let a = active(&app)?;
+    if a.keys.single() {
+        return Ok(vec![AddressRow { address: a.keys.address(false, 0)?, index: 0 }]);
+    }
+    (0..a.meta.receive_count.max(1)).map(|i| Ok(AddressRow { address: a.keys.address(false, i)?, index: i })).collect()
+}
+
+/// Hand out the next receive address of the active wallet.
+#[tauri::command]
+pub fn wallet_new_address(app: AppHandle) -> Result<AddressRow, String> {
+    let mut a = active(&app)?;
+    if a.keys.single() {
+        return Err("A wallet imported from one private key has exactly one address.".into());
+    }
+    let index = a.meta.receive_count.max(1);
+    let address = a.keys.address(false, index)?;
+    if let Some(w) = a.reg.wallets.iter_mut().find(|w| w.id == a.meta.id) {
+        w.receive_count = index + 1;
+    }
+    save_registry(&a.dir, &a.reg)?;
+    Ok(AddressRow { address, index })
 }
 
 #[derive(Serialize)]
@@ -295,22 +557,47 @@ pub struct Descriptors {
     import: String,
 }
 
-/// Private descriptors for importing this wallet into Saturn Core (spend from a full node).
+/// Private descriptors for importing the active wallet into Saturn Core.
 #[tauri::command]
 pub fn wallet_descriptors(app: AppHandle) -> Result<Descriptors, String> {
-    let keys = require_keys(&app)?;
-    let base = |chain: u32| {
-        let d = format!("wpkh({}/84h/0h/0h/{chain}/*)", keys.master);
-        format!("{d}#{}", descriptor_checksum(&d))
+    let a = active(&app)?;
+    let (receive, change) = match (&a.keys.source, &a.keys.master) {
+        (Source::Single(sk), _) => {
+            let wif = PrivateKey::new(*sk, Network::Bitcoin).to_wif();
+            let d = format!("wpkh({wif})");
+            let d = format!("{d}#{}", descriptor_checksum(&d));
+            (d.clone(), d)
+        }
+        (_, Some(master)) => {
+            let base = |chain: u32| {
+                let d = format!("wpkh({master}/84h/0h/0h/{chain}/*)");
+                format!("{d}#{}", descriptor_checksum(&d))
+            };
+            (base(0), base(1))
+        }
+        (Source::Account(account), None) => {
+            let base = |chain: u32| {
+                let d = format!("wpkh({account}/{chain}/*)");
+                format!("{d}#{}", descriptor_checksum(&d))
+            };
+            (base(0), base(1))
+        }
     };
-    let (receive, change) = (base(0), base(1));
-    let import = serde_json::json!([
-        { "desc": receive, "timestamp": 0, "active": true, "internal": false },
-        { "desc": change, "timestamp": 0, "active": true, "internal": true }
-    ])
-    .to_string();
+    let import = if a.keys.single() {
+        serde_json::json!([{ "desc": receive, "timestamp": 0 }]).to_string()
+    } else {
+        serde_json::json!([
+            { "desc": receive, "timestamp": 0, "active": true, "internal": false },
+            { "desc": change, "timestamp": 0, "active": true, "internal": true }
+        ])
+        .to_string()
+    };
     Ok(Descriptors { receive, change, import })
 }
+
+/* ------------------------------------------------------------------ */
+/* balance and sending                                                 */
+/* ------------------------------------------------------------------ */
 
 #[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -344,18 +631,6 @@ fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder().timeout(Duration::from_secs(20)).build().map_err(|e| e.to_string())
 }
 
-/// every address this wallet watches, with its chain and index
-fn watched(keys: &Keys) -> Result<Vec<(String, bool, u32)>, String> {
-    let mut out = Vec::new();
-    for i in 0..RECEIVE_SCAN {
-        out.push((keys.address(false, i)?, false, i));
-    }
-    for i in 0..CHANGE_SCAN {
-        out.push((keys.address(true, i)?, true, i));
-    }
-    Ok(out)
-}
-
 async fn fetch_utxos(api: &str, addrs: &[String]) -> Result<UtxoResponse, String> {
     let url = format!("{}/utxos?addrs={}", api.trim_end_matches('/'), addrs.join(","));
     let r = client()?.get(url).send().await.map_err(|e| format!("Can't reach Saturn Pool to read your balance: {e}"))?;
@@ -368,12 +643,12 @@ async fn fetch_utxos(api: &str, addrs: &[String]) -> Result<UtxoResponse, String
 
 #[tauri::command]
 pub async fn wallet_balance(app: AppHandle, api: String) -> Result<Balance, String> {
-    let keys = require_keys(&app)?;
-    balance_with(&keys, &api).await
+    let a = active(&app)?;
+    balance_with(&a.keys, a.meta.receive_count, &api).await
 }
 
-async fn balance_with(keys: &Keys, api: &str) -> Result<Balance, String> {
-    let addrs: Vec<String> = watched(keys)?.into_iter().map(|(a, _, _)| a).collect();
+async fn balance_with(keys: &Keys, receive_count: u32, api: &str) -> Result<Balance, String> {
+    let addrs: Vec<String> = keys.watched(receive_count)?.into_iter().map(|(a, _, _)| a).collect();
     let r = fetch_utxos(api, &addrs).await?;
     let spendable = r.utxos.iter().filter(|u| u.spendable).map(|u| u.sats).sum();
     let immature = r.utxos.iter().filter(|u| !u.spendable).map(|u| u.sats).sum();
@@ -390,17 +665,18 @@ pub struct Sent {
     amount_sats: u64,
 }
 
-/// Build, sign and broadcast a payment. `amount_sats = None` sends everything spendable (minus fee).
+/// Build, sign and broadcast a payment from the active wallet. `amount_sats = None` sends
+/// everything spendable (minus the fee).
 #[tauri::command]
 pub async fn wallet_send(app: AppHandle, api: String, to: String, amount_sats: Option<u64>, fee_rate: Option<f64>) -> Result<Sent, String> {
-    let keys = require_keys(&app)?;
-    send_with(&keys, &api, &to, amount_sats, fee_rate).await
+    let a = active(&app)?;
+    send_with(&a.keys, a.meta.receive_count, &api, &to, amount_sats, fee_rate).await
 }
 
-async fn send_with(keys: &Keys, api: &str, to: &str, amount_sats: Option<u64>, fee_rate: Option<f64>) -> Result<Sent, String> {
+async fn send_with(keys: &Keys, receive_count: u32, api: &str, to: &str, amount_sats: Option<u64>, fee_rate: Option<f64>) -> Result<Sent, String> {
     let dest = script_for(to)?;
     let fee_rate = fee_rate.unwrap_or(2.0).clamp(1.0, 500.0);
-    let watched = watched(keys)?;
+    let watched = keys.watched(receive_count)?;
     let addrs: Vec<String> = watched.iter().map(|(a, _, _)| a.clone()).collect();
     let r = fetch_utxos(api, &addrs).await?;
     let mut coins: Vec<Utxo> = r.utxos.into_iter().filter(|u| u.spendable).collect();
@@ -450,6 +726,7 @@ async fn send_with(keys: &Keys, api: &str, to: &str, amount_sats: Option<u64>, f
 
     let mut outputs = vec![TxOut { value: Amount::from_sat(amount), script_pubkey: dest }];
     if change > 0 {
+        // change goes to the wallet's change chain (or back to the one address of a single key)
         let (_, pk) = keys.key(true, 0)?;
         outputs.push(TxOut { value: Amount::from_sat(change), script_pubkey: ScriptBuf::new_p2wpkh(&pk.wpubkey_hash()) });
     }
@@ -500,20 +777,65 @@ pub fn wallet_check_address(address: String) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    const ABANDON: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
     // BIP84 test vector (account 0, first receive address), re-encoded with Saturn's prefix
     #[test]
     fn bip84_vector() {
-        let k = Keys::from_phrase("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about").unwrap();
+        let (k, kind) = Keys::from_secret(ABANDON).unwrap();
+        assert_eq!(kind, "phrase");
         let a = k.address(false, 0).unwrap();
         let (_, _, program) = segwit::decode("bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu").unwrap();
         let hrp = Hrp::parse(HRP).unwrap();
         assert_eq!(a, segwit::encode(hrp, segwit::VERSION_0, &program).unwrap());
-        assert!(a.starts_with("sat1q"));
+    }
+
+    // the same keys arrive through every import form and give the same addresses
+    #[test]
+    fn descriptor_and_xprv_imports_match_the_phrase() {
+        let (k, _) = Keys::from_secret(ABANDON).unwrap();
+        let master = k.master.unwrap();
+        let want = k.address(false, 3).unwrap();
+        let d = format!("wpkh({master}/84h/0h/0h/0/*)");
+        let desc = format!("{d}#{}", descriptor_checksum(&d));
+        for secret in [desc, master.to_string()] {
+            let (k2, kind) = Keys::from_secret(&secret).unwrap();
+            assert_eq!(kind, "xprv");
+            assert_eq!(k2.address(false, 3).unwrap(), want);
+        }
+        // a descriptor with key origin carries the account key itself
+        let Source::Account(account) = &k.source else { panic!() };
+        let with_origin = format!("wpkh([73c5da0a/84h/0h/0h]{account}/0/*)");
+        let (k3, _) = Keys::from_secret(&with_origin).unwrap();
+        assert_eq!(k3.address(false, 3).unwrap(), want);
+    }
+
+    #[test]
+    fn picks_the_wpkh_receive_descriptor_from_listdescriptors() {
+        let (k, _) = Keys::from_secret(ABANDON).unwrap();
+        let m = k.master.unwrap();
+        let pasted = format!(
+            r#"{{"descriptors": [ {{"desc": "pkh({m}/44h/0h/0h/0/*)#aaaa"}}, {{"desc": "sh(wpkh({m}/49h/0h/0h/0/*))#bbbb"}},
+            {{"desc": "wpkh({m}/84h/0h/0h/1/*)#cccc"}}, {{"desc": "wpkh({m}/84h/0h/0h/0/*)#dddd", "active": true}}, {{"desc": "tr({m}/86h/0h/0h/0/*)#eeee"}} ]}}"#
+        );
+        let (k2, kind) = Keys::from_secret(&pasted).unwrap();
+        assert_eq!(kind, "xprv");
+        assert_eq!(k2.address(false, 0).unwrap(), k.address(false, 0).unwrap());
+    }
+
+    #[test]
+    fn single_key_import() {
+        let (k, _) = Keys::from_secret(ABANDON).unwrap();
+        let (sk, _) = k.key(false, 0).unwrap();
+        let wif = PrivateKey::new(sk, Network::Bitcoin).to_wif();
+        let (k2, kind) = Keys::from_secret(&wif).unwrap();
+        assert_eq!(kind, "key");
+        assert_eq!(k2.address(false, 0).unwrap(), k.address(false, 0).unwrap());
+        assert_eq!(k2.watched(5).unwrap().len(), 1);
     }
 
     #[test]
     fn checksum_matches_bip380() {
-        // example from BIP380
         assert_eq!(descriptor_checksum("raw(deadbeef)"), "89f8spxm");
     }
 
@@ -521,20 +843,21 @@ mod tests {
     fn rejects_other_coins() {
         assert!(script_for("bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu").is_err());
         assert!(script_for("sat1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu").is_err()); // bad checksum
+        assert!(Keys::from_secret("hello world").is_err());
     }
 
     /// End-to-end against a pool on a regtest chain:
-    /// `SATURN_TEST_API=http://127.0.0.1:38081 SATURN_TEST_PHRASE="…" SATURN_TEST_TO=sat1… cargo test live_wallet -- --ignored --nocapture`
+    /// `SATURN_TEST_HRP=bcrt SATURN_TEST_API=http://127.0.0.1:38081 SATURN_TEST_SECRET="…" SATURN_TEST_TO=bcrt1… cargo test live_wallet -- --ignored --nocapture`
     #[tokio::test]
     #[ignore]
     async fn live_wallet() {
         let api = std::env::var("SATURN_TEST_API").unwrap();
-        let k = Keys::from_phrase(&std::env::var("SATURN_TEST_PHRASE").unwrap()).unwrap();
-        println!("receive address {}", k.address(false, 0).unwrap());
-        let b = balance_with(&k, &api).await.unwrap();
+        let (k, kind) = Keys::from_secret(&std::env::var("SATURN_TEST_SECRET").unwrap()).unwrap();
+        println!("{kind} wallet, receive address {}", k.address(false, 0).unwrap());
+        let b = balance_with(&k, 1, &api).await.unwrap();
         println!("spendable {} immature {} coins {}", b.spendable_sats, b.immature_sats, b.coins.len());
         let to = std::env::var("SATURN_TEST_TO").unwrap();
-        let sent = send_with(&k, &api, &to, Some(1_2345_6789), None).await.unwrap();
+        let sent = send_with(&k, 1, &api, &to, Some(1_2345_6789), None).await.unwrap();
         println!("sent {} fee {} txid {}", sent.amount_sats, sent.fee_sats, sent.txid);
     }
 }
