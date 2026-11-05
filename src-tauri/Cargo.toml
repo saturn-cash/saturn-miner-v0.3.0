@@ -1,6 +1,6 @@
 [package]
 name = "saturn-miner"
-version = "0.6.2"
+version = "0.7.0"
 description = "Saturn Miner: desktop miner and Bitaxe controller for Saturn Core"
 edition = "2021"
 rust-version = "1.77"
@@ -23,6 +23,12 @@ sha2 = "0.10"
 # in-app wallet: BIP39 recovery phrase, BIP84 keys, P2WPKH signing
 bitcoin = { version = "0.32", features = ["rand-std"] }
 bip39 = { version = "2", features = ["rand"] }
+# built-in Saturn Core node: unpack the release archive, stop the node cleanly on quit
+flate2 = "1"
+tar = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+base64 = "0.22"
+tokio = { version = "1", features = ["time"] }
 
 # the recovery phrase is kept in the OS keychain where there is one (Keychain on macOS, Credential
 # Manager on Windows); Linux keeps it in a file only this user can read

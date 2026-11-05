@@ -8,6 +8,7 @@ import { minerActions, useMiner } from '@/lib/miner/store'
 import type { Settings } from '@/lib/miner/types'
 import { cn } from '@/lib/utils'
 import { Panel } from '../hud/panel'
+import { LocalNodePanel } from '../node/local-node-panel'
 
 type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never }[keyof Settings]
 
@@ -96,6 +97,8 @@ export function SettingsScreen() {
         </ul>
       </Panel>
 
+      <div className="flex flex-col gap-5">
+      <LocalNodePanel compact />
       <Panel title="Saturn Core connection">
         <label htmlFor="rpc-url" className="t-subhead secondary mb-1 block">
           RPC endpoint
@@ -111,7 +114,7 @@ export function SettingsScreen() {
             <Input id="rpc-pass" type="password" value={settings.rpcPassword} onChange={(e) => minerActions.updateSettings({ rpcPassword: e.target.value })} className="font-mono text-[12px]" autoComplete="off" />
           </div>
         </div>
-        <p className="t-subhead secondary mt-3 leading-relaxed">Leave user and password empty when Saturn Core runs on this computer: the app reads the node&apos;s cookie file. Fill them in to reach a node elsewhere (set rpcuser/rpcpassword in its saturn.conf).</p>
+        <p className="t-subhead secondary mt-3 leading-relaxed">Saturn Core answers on http://127.0.0.1:9998. Leave user and password empty when it runs on this computer: the app reads the node&apos;s cookie file. Fill them in to reach a node elsewhere (set rpcuser/rpcpassword in its saturn.conf).</p>
         <dl className="mt-5 grid grid-cols-2 gap-3">
           <div className="well p-3">
             <dt className="t-subhead secondary">Data source</dt>
@@ -123,6 +126,7 @@ export function SettingsScreen() {
           </div>
         </dl>
       </Panel>
+      </div>
     </div>
   )
 }

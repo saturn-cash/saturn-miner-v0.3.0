@@ -49,4 +49,8 @@ export const TAURI_COMMANDS = {
   walletRename: 'wallet_rename',
   walletAddresses: 'wallet_addresses',
   walletNewAddress: 'wallet_new_address',
+  localNodeStatus: 'local_node_status',
+  localNodeInstall: 'local_node_install',
+  localNodeStart: 'local_node_start',
+  localNodeStop: 'local_node_stop',
 } as const

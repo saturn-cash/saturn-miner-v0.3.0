@@ -1,4 +1,5 @@
 mod bitaxe;
+mod local_node;
 mod miner;
 mod node;
 mod wallet;
@@ -16,7 +17,14 @@ fn backend_info() -> Value {
 pub fn run() {
     tauri::Builder::default()
         .manage(miner::MinerHandle::default())
-        .invoke_handler(tauri::generate_handler![backend_info, bitaxe::bitaxe_request, bitaxe::bitaxe_scan, miner::start_mining, miner::stop_mining, miner::get_telemetry, node::node_rpc, node::node_snapshot, node::pool_snapshot, wallet::wallet_info, wallet::wallet_create, wallet::wallet_import, wallet::wallet_reveal, wallet::wallet_delete, wallet::wallet_descriptors, wallet::wallet_balance, wallet::wallet_send, wallet::wallet_check_address, wallet::wallet_select, wallet::wallet_rename, wallet::wallet_addresses, wallet::wallet_new_address])
-        .run(tauri::generate_context!())
-        .expect("error while running Saturn");
+        .manage(local_node::LocalNode::default())
+        .invoke_handler(tauri::generate_handler![backend_info, bitaxe::bitaxe_request, bitaxe::bitaxe_scan, miner::start_mining, miner::stop_mining, miner::get_telemetry, node::node_rpc, node::node_snapshot, node::pool_snapshot, wallet::wallet_info, wallet::wallet_create, wallet::wallet_import, wallet::wallet_reveal, wallet::wallet_delete, wallet::wallet_descriptors, wallet::wallet_balance, wallet::wallet_send, wallet::wallet_check_address, wallet::wallet_select, wallet::wallet_rename, wallet::wallet_addresses, wallet::wallet_new_address, local_node::local_node_status, local_node::local_node_install, local_node::local_node_start, local_node::local_node_stop])
+        .build(tauri::generate_context!())
+        .expect("error while running Saturn")
+        .run(|app, event| {
+            // stop the built-in node cleanly when the app quits
+            if let tauri::RunEvent::Exit = event {
+                local_node::shutdown(app);
+            }
+        });
 }

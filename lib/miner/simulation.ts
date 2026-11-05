@@ -81,7 +81,7 @@ export function createInitialState(): MinerState {
     temperature: 41,
     power: 18,
     pool: { connected: false, latency: 0, difficulty: 65536 },
-    node: { connected: true, error: null, version: '/Saturn Core (simulated)/', hasWallet: true, progress: 1 },
+    node: { connected: true, error: null, version: '/Saturn Core (simulated)/', hasWallet: true, progress: 1, height: 0, headers: 0 },
     network: {
       height,
       difficulty: 1_482_331.27,
@@ -101,7 +101,7 @@ export function createInitialState(): MinerState {
     blocks: seedBlocks(height, now),
     log: [
       makeLog('info', 'SYSTEM', 'Saturn initialised', now - 4000),
-      makeLog('info', 'NODE', 'Connected to saturnd via RPC 127.0.0.1:8332', now - 3200),
+      makeLog('info', 'NODE', 'Connected to saturnd via RPC 127.0.0.1:9998', now - 3200),
       makeLog('success', 'NODE', `Chain synced — tip at height ${height}`, now - 2400),
       makeLog('info', 'WALLET', 'Wallet loaded (descriptor, encrypted)', now - 1600),
       makeLog('warn', 'SYSTEM', 'Browser preview: every number on screen is simulated. Install the desktop app to mine for real.', now - 800),
@@ -120,12 +120,13 @@ export function createInitialState(): MinerState {
       font: 'oxanium',
       volume: 0.6,
       fpsCap: 60,
-      rpcUrl: 'http://127.0.0.1:8332',
+      rpcUrl: 'http://127.0.0.1:9998',
       rpcUser: '',
       rpcPassword: '',
       launchOnStartup: false,
       minimizeToTray: true,
       ecoOnBattery: true,
+      runNode: false,
     },
   }
 }

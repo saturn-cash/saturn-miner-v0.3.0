@@ -61,6 +61,8 @@ export interface Settings {
   launchOnStartup: boolean
   minimizeToTray: boolean
   ecoOnBattery: boolean
+  /** run a full Saturn Core node on this computer (started with the app) */
+  runNode: boolean
 }
 
 export interface MinerState {
@@ -79,7 +81,7 @@ export interface MinerState {
   power: number
   pool: { connected: boolean; latency: number; difficulty: number }
   /** Saturn Core node link (desktop only) */
-  node: { connected: boolean; error: string | null; version: string; hasWallet: boolean; progress: number }
+  node: { connected: boolean; error: string | null; version: string; hasWallet: boolean; progress: number; height: number; headers: number }
   network: {
     height: number
     difficulty: number

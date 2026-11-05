@@ -75,7 +75,7 @@ pub struct NodeSnapshot {
     pub transactions: Vec<Transaction>,
 }
 
-fn default_datadirs() -> Vec<PathBuf> {
+pub(crate) fn default_datadirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     #[cfg(target_os = "windows")]
     {

@@ -16,7 +16,10 @@ function loadSettings(s: MinerState): MinerState {
   if (typeof window === 'undefined') return s
   try {
     const saved = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) ?? 'null')
-    return saved ? { ...s, settings: { ...s.settings, ...saved } } : s
+    if (!saved) return s
+    // early builds defaulted to Bitcoin's RPC port; Saturn Core listens on 9998
+    if (saved.rpcUrl === 'http://127.0.0.1:8332') saved.rpcUrl = 'http://127.0.0.1:9998'
+    return { ...s, settings: { ...s.settings, ...saved } }
   } catch {
     return s
   }
@@ -104,7 +107,7 @@ function enterNativeMode(maxThreads: number) {
     maxThreads,
     threadRates: Array(config.threads).fill(0),
     pool: { connected: false, latency: 0, difficulty: 0 },
-    node: { connected: false, error: null, version: '', hasWallet: false, progress: 0 },
+    node: { connected: false, error: null, version: '', hasWallet: false, progress: 0, height: 0, headers: 0 },
     network: { height: 0, difficulty: 0, networkHashrate: 0, peers: [], mempool: 0, synced: false },
     wallet: { balance: 0, immature: 0, poolPending: 0, address: config.payoutAddress, transactions: [] },
     blocks: [],
@@ -169,7 +172,8 @@ async function tickPool() {
       if (!p.reachable && poolWasReachable !== false) log = [...log, makeLog('warn', 'POOL', p.error ?? 'Saturn Pool unreachable')]
       poolWasReachable = p.reachable
       if (!p.reachable) return { ...s, log }
-      const network = s.node.connected
+      // a node that's still catching up shows an old chain; the pool's numbers are the real tip
+      const network = s.node.connected && s.node.progress >= 0.999
         ? s.network
         : { ...s.network, height: Math.max(p.height, s.network.height), difficulty: p.difficulty, networkHashrate: p.networkHashrate, synced: true }
       return { ...s, log, network, wallet: { ...s.wallet, poolPending: p.pending } }
@@ -201,9 +205,12 @@ async function tickNode() {
       return {
         ...s,
         log,
-        node: { connected: true, error: null, version: n.version, hasWallet: n.hasWallet, progress: n.progress },
-        network: { height: n.height, difficulty: n.difficulty, networkHashrate: n.networkHashrate, peers: n.peers, mempool: n.mempool, synced: n.synced },
-        blocks: n.blocks,
+        node: { connected: true, error: null, version: n.version, hasWallet: n.hasWallet, progress: n.progress, height: n.height, headers: n.headers },
+        // while the node catches up, keep Saturn Pool's view of the tip and take only peers from the node
+        network: n.progress >= 0.999
+          ? { height: n.height, difficulty: n.difficulty, networkHashrate: n.networkHashrate, peers: n.peers, mempool: n.mempool, synced: n.synced }
+          : { ...s.network, peers: n.peers, mempool: n.mempool, synced: false },
+        blocks: n.progress >= 0.999 ? n.blocks : s.blocks,
         wallet: n.hasWallet ? { ...s.wallet, balance: n.balance, immature: n.immature, transactions: n.transactions } : s.wallet,
       }
     })

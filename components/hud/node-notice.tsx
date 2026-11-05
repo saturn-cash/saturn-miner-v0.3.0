@@ -28,10 +28,9 @@ export function NodeNotice({ what }: { what: string }) {
       <div className="min-w-0">
         <p className="font-medium text-foreground">No Saturn Core node connected</p>
         <p className="mt-1 leading-relaxed text-white/65">
-          {what} come from a Saturn Core node. Mining through the pool works without one, and your pool earnings and the chain's height
-          and difficulty come straight from Saturn Pool. For your own wallet and peers, run Saturn Core on this
-          computer with <code className="font-mono text-white/80">server=1</code> in its <code className="font-mono text-white/80">saturn.conf</code>, then check the RPC
-          endpoint in Settings.
+          {what} come from a Saturn Core node. Turn on <span className="text-foreground">Saturn node on this computer</span> to run one
+          here, or connect to a node elsewhere in Settings. Mining through the pool works without one, and the chain&apos;s height and
+          difficulty come straight from Saturn Pool meanwhile.
         </p>
         {node.error && <p className="mt-1.5 truncate font-mono text-[11.5px] text-white/45">{node.error}</p>}
       </div>

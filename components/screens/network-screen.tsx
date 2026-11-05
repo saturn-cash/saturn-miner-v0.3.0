@@ -6,6 +6,7 @@ import { useMiner } from '@/lib/miner/store'
 import type { Peer } from '@/lib/miner/types'
 import { cn } from '@/lib/utils'
 import { NodeNotice } from '../hud/node-notice'
+import { LocalNodePanel } from '../node/local-node-panel'
 import { Label, Panel, StatusDot } from '../hud/panel'
 import { Ticker } from '../hud/ticker'
 
@@ -22,6 +23,7 @@ export function NetworkScreen() {
 
   return (
     <div className="flex flex-col gap-5">
+      <LocalNodePanel />
       <NodeNotice what="Peers, blocks and chain stats" />
       <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
         {stats.map((s, i) => (
