@@ -127,6 +127,9 @@ export function createInitialState(): MinerState {
       minimizeToTray: true,
       ecoOnBattery: true,
       runNode: false,
+      shareSound: true,
+      celebration: true,
+      realSaturn: true,
     },
   }
 }

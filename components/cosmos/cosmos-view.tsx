@@ -21,6 +21,9 @@ export function CosmosView({ reducedMotion }: { reducedMotion: boolean }) {
   const latest = useMiner((s) => s.blocks[0])
   const status = useMiner((s) => s.status)
   const animations = useMiner((s) => s.settings.animations)
+  const shareSound = useMiner((s) => s.settings.shareSound)
+  const showCelebration = useMiner((s) => s.settings.celebration)
+  const realSaturn = useMiner((s) => s.settings.realSaturn)
   const fpsCap = useMiner((s) => s.settings.fpsCap)
   const energy = Math.min(1, hashrate / (PEAK_HS * 0.5))
 
@@ -32,16 +35,20 @@ export function CosmosView({ reducedMotion }: { reducedMotion: boolean }) {
   useEffect(() => {
     if (accepted > prevAccepted.current) {
       cosmos.comet()
-      sound.share()
+      if (shareSound) sound.share()
     }
     prevAccepted.current = accepted
-  }, [accepted])
+  }, [accepted, shareSound])
 
   const prevBlocks = useRef(blocksFound)
   useEffect(() => {
-    if (blocksFound > prevBlocks.current && latest?.minedByYou) celebrate(latest.height, latest.reward)
+    if (blocksFound > prevBlocks.current && latest?.minedByYou) {
+      // the celebration switch hides the supernova; the bell still rings unless sound is off
+      if (showCelebration) celebrate(latest.height, latest.reward)
+      else sound.block()
+    }
     prevBlocks.current = blocksFound
-  }, [blocksFound, latest])
+  }, [blocksFound, latest, showCelebration])
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -56,7 +63,7 @@ export function CosmosView({ reducedMotion }: { reducedMotion: boolean }) {
 
   return (
     <div className="fixed inset-0 -z-0" aria-hidden="true">
-      <CosmosScene energy={energy} pulseKey={accepted + blocksFound * 1000} animate={animations && !reducedMotion} fpsCap={fpsCap} />
+      <CosmosScene energy={energy} pulseKey={accepted + blocksFound * 1000} animate={animations && !reducedMotion} fpsCap={fpsCap} photo={realSaturn} />
     </div>
   )
 }

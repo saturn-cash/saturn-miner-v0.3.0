@@ -14,7 +14,9 @@ type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never 
 
 const TOGGLES: Array<{ key: BoolKey; label: string; description: string }> = [
   { key: 'animations', label: 'Cinematic flight', description: 'Warp between destinations, comets for shares and the block-found supernova. Turn off to free up GPU time.' },
-  { key: 'sound', label: 'Sound', description: 'A space drone that rises with your hashrate, warp whooshes between destinations, and chimes for shares and blocks.' },
+  { key: 'realSaturn', label: 'Real Saturn', description: 'Real photos of Saturn taken by NASA’s Cassini spacecraft behind every screen, with the stars and effects on top. Off shows the 3D model instead.' },
+  { key: 'sound', label: 'Sound', description: 'A space drone that rises with your hashrate, warp whooshes between destinations, a ping for shares and a bell for blocks. Also the speaker button at the top left.' },
+  { key: 'shareSound', label: 'Share ping', description: 'A short ping every time the pool accepts one of your shares.' },
   { key: 'ecoOnBattery', label: 'Eco mode on battery', description: 'Halve intensity automatically when unplugged.' },
   { key: 'minimizeToTray', label: 'Keep mining when closed', description: 'Closing the window leaves the miner running in the menu bar or tray.' },
   { key: 'launchOnStartup', label: 'Open at login', description: 'Start Saturn when you log in.' },
@@ -87,12 +89,19 @@ export function SettingsScreen() {
           </li>
           <li className="flex min-h-[44px] items-center justify-between gap-6 px-4 py-2.5">
             <div>
-              <p className="t-body">Block-found celebration</p>
-              <p className="t-subhead secondary mt-0.5">Finding a block is rare. See what happens when you do.</p>
+              <label htmlFor="set-celebration" className="t-body">
+                Block-found celebration
+              </label>
+              <p className="t-subhead secondary mt-0.5">
+                A supernova across the whole window when you find a block. Muting sound keeps the show and drops the bell; turning this off keeps the bell and drops the show.
+              </p>
             </div>
-            <button type="button" onClick={() => celebrate(height + 1, 50, true)} className="mac-button shrink-0">
-              Preview
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              <button type="button" onClick={() => celebrate(height + 1, 50, true)} className="mac-button">
+                Preview
+              </button>
+              <Switch id="set-celebration" checked={settings.celebration} onCheckedChange={(v) => minerActions.updateSettings({ celebration: v })} />
+            </div>
           </li>
         </ul>
       </Panel>

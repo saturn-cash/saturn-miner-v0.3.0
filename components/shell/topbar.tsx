@@ -7,6 +7,7 @@ import { minerActions, useMiner } from '@/lib/miner/store'
 import { cn } from '@/lib/utils'
 import type { Platform } from '@/lib/platform'
 import { type ScreenId, screenMeta } from './destinations'
+import { SoundToggle } from '../hud/sound-toggle'
 import { WindowControls } from './window-controls'
 
 function compactKm(km: number) {
@@ -56,9 +57,12 @@ export function Topbar({ screen, platform = 'web' }: { screen: ScreenId; platfor
   const busy = status === 'starting' || status === 'stopping'
   return (
     <header data-tauri-drag-region className="toolbar relative z-10 flex h-[52px] shrink-0 items-center justify-between gap-4 px-5">
-      <div data-tauri-drag-region className="min-w-0">
-        <h1 className="t-title3 truncate leading-[18px]">{meta.label}</h1>
-        <p className="t-subhead secondary truncate">{meta.place}</p>
+      <div data-tauri-drag-region className="flex min-w-0 items-center gap-3">
+        <SoundToggle />
+        <div data-tauri-drag-region className="min-w-0">
+          <h1 className="t-title3 truncate leading-[18px]">{meta.label}</h1>
+          <p className="t-subhead secondary truncate">{meta.place}</p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <StatusCapsule />

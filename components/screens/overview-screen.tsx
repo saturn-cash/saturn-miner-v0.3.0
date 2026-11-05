@@ -9,6 +9,7 @@ import { AreaChart } from '../hud/charts'
 import { IgnitionButton } from '../hud/ignition-button'
 import { LogFeed } from '../hud/log-feed'
 import { Label, Panel, StatusDot } from '../hud/panel'
+import { SoundToggle } from '../hud/sound-toggle'
 import { Ticker } from '../hud/ticker'
 import type { ScreenId } from '../shell/destinations'
 import { FlightMap } from '../shell/flight-map'
@@ -72,8 +73,9 @@ function Hero() {
             {line}
           </p>
         </div>
-        <div className="pb-2">
+        <div className="flex items-center gap-3 pb-2">
           <IgnitionButton />
+          <SoundToggle withLabel className="h-[30px] px-3" />
         </div>
       </div>
 

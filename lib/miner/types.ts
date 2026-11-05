@@ -64,6 +64,12 @@ export interface Settings {
   ecoOnBattery: boolean
   /** run a full Saturn Core node on this computer (started with the app) */
   runNode: boolean
+  /** a ping for every accepted share (only when sound is on) */
+  shareSound: boolean
+  /** the full-screen supernova when you find a block */
+  celebration: boolean
+  /** real Cassini photos of Saturn behind the app instead of the 3D model */
+  realSaturn: boolean
 }
 
 export interface MinerState {

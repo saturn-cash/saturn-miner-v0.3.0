@@ -6,7 +6,7 @@
  *   drone   two detuned low sines + filtered "solar wind" noise; opens up as hashrate climbs
  *   warp    a noise whoosh swept through a band-pass, with a sub-bass sweep under it
  *   ignite  a rising reactor tone and a thump; powerDown is the reverse
- *   share   a soft crystalline ping on a pentatonic note, echoed
+ *   share   a short bright ping, like a struck glass bar
  *   block   a slow major-ninth swell with shimmer
  *   arrive  a low bell when the ship settles at a destination
  *
@@ -24,7 +24,8 @@ type Nodes = {
   noise: AudioBuffer
 }
 
-const PENTATONIC = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3, 2]
+/** E6, G6, A6, C7: high enough to sparkle, all in one pentatonic scale so pings never clash */
+const PING_NOTES = [1318.5, 1568, 1760, 2093]
 
 class SoundEngine {
   private n: Nodes | null = null
@@ -134,6 +135,12 @@ class SoundEngine {
     osc.stop(t + 1.3)
   }
 
+  /**
+   * Accepted share: a short, bright "ping", like a struck glass bar. A clean high fundamental
+   * with a 2 ms attack, two inharmonic overtones that die away first (that's what makes it ring
+   * instead of beep), a tiny glassy tick on the attack, and only a whisper of echo. About half a
+   * second, nothing below 1 kHz.
+   */
   share() {
     const n = this.ready()
     if (!n) return
@@ -142,24 +149,42 @@ class SoundEngine {
     this.lastShare = now
     const { ctx } = n
     const t = ctx.currentTime
-    const f = 880 * PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)]
-    for (const [mult, amp] of [
-      [1, 0.07],
-      [2.01, 0.025],
+    const f = PING_NOTES[Math.floor(Math.random() * PING_NOTES.length)]
+    for (const [mult, amp, decay] of [
+      [1, 0.11, 0.42],
+      [2.76, 0.035, 0.13],
+      [5.4, 0.014, 0.05],
     ] as const) {
       const o = ctx.createOscillator()
       o.type = 'sine'
-      o.frequency.value = f * mult
+      o.frequency.setValueAtTime(f * mult * 1.004, t)
+      o.frequency.exponentialRampToValueAtTime(f * mult, t + 0.03) // the tiny pitch settle of a struck bar
       const g = ctx.createGain()
       g.gain.setValueAtTime(0.0001, t)
-      g.gain.exponentialRampToValueAtTime(amp, t + 0.01)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
+      g.gain.exponentialRampToValueAtTime(amp, t + 0.002)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay)
       o.connect(g)
       g.connect(n.master)
-      g.connect(n.echo)
+      if (mult === 1) {
+        const send = ctx.createGain()
+        send.gain.value = 0.18
+        g.connect(send).connect(n.echo)
+      }
       o.start(t)
-      o.stop(t + 1)
+      o.stop(t + decay + 0.05)
     }
+    // the tick of the strike
+    const tick = ctx.createBufferSource()
+    tick.buffer = n.noise
+    const hp = ctx.createBiquadFilter()
+    hp.type = 'highpass'
+    hp.frequency.value = 6000
+    const tg = ctx.createGain()
+    tg.gain.setValueAtTime(0.03, t)
+    tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.012)
+    tick.connect(hp).connect(tg).connect(n.master)
+    tick.start(t, Math.random())
+    tick.stop(t + 0.02)
   }
 
   block() {
