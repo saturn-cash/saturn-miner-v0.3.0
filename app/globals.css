@@ -336,3 +336,10 @@
     transform: scale(1.04);
   }
 }
+
+/* the little lamps behind the reactor's milk glass */
+@keyframes lamp-flicker {
+  0%, 100% { opacity: 0.55; }
+  45% { opacity: 1; }
+  60% { opacity: 0.8; }
+}

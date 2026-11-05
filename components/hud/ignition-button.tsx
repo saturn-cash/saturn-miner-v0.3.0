@@ -13,6 +13,16 @@ const LABELS = {
   stopping: 'Stopping…',
 } as const
 
+/** Little lamps behind the frosted glass that light up while mining (position %, size px, flicker timing, colour). */
+const LAMPS = [
+  { x: 30, y: 30, s: 30, t: 4.2, d: 0, c: 'rgb(188 130 243 / 0.75)' },
+  { x: 70, y: 30, s: 26, t: 5.1, d: 1.3, c: 'rgb(141 159 255 / 0.75)' },
+  { x: 50, y: 74, s: 32, t: 4.7, d: 0.6, c: 'rgb(255 103 120 / 0.7)' },
+  { x: 22, y: 60, s: 22, t: 3.8, d: 2.1, c: 'rgb(245 185 234 / 0.75)' },
+  { x: 78, y: 62, s: 24, t: 4.4, d: 0.9, c: 'rgb(255 186 113 / 0.75)' },
+  { x: 50, y: 20, s: 18, t: 5.6, d: 1.8, c: 'rgb(198 134 255 / 0.75)' },
+]
+
 /** A hexagon (Saturn's north-pole storm) with softly rounded corners, as an SVG path in pixels. */
 function roundedHex(s: number, radius: number) {
   const v: [number, number][] = [
@@ -35,9 +45,8 @@ function roundedHex(s: number, radius: number) {
 }
 
 /**
- * The reactor, as liquid glass in the shape of a rounded hexagon. Idle, it is dark smoked glass with
- * a bright glass edge and only a whisper of colour on its rim. Mining, colour floods the glass and
- * glows around it. The highlight follows the pointer, and pressing it squishes like a liquid.
+ * The reactor, as liquid glass in the shape of a rounded hexagon, frosted white like an old indicator
+ * lamp. Off, the lamps behind the frost are dark. Mining, they light up in colour and glow through it. The highlight follows the pointer, and pressing it squishes like a liquid.
  */
 export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const status = useMiner((s) => s.status)
@@ -119,26 +128,58 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
             WebkitBackdropFilter: 'blur(14px) saturate(180%)',
           }}
         >
-          {/* smoked glass: near-black when off, clearing as the colour comes in */}
+          {/* Milk glass, like an old indicator lamp: a thin frosted white diffuser over little lamps.
+              Off, the lamps are dark and it is plain white glass. Mining, the lamps light up in colour
+              and glow through the frost, with liquid colour swimming behind them. */}
+          <span aria-hidden="true" className="absolute inset-0" style={{ background: 'rgb(18 18 22 / 0.22)' }} />
+
+          {/* liquid colour swimming behind the frost, only while mining */}
+          <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-0')}>
+            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.55, animation: 'radar-spin 7s linear infinite' }} />
+          </span>
+
+          {/* the lamps behind the diffuser: dark when off, glowing when mining */}
+          <span aria-hidden="true" className={cn('absolute inset-0 transition-opacity duration-1000', active ? 'opacity-100' : busy ? 'opacity-40' : 'opacity-0')}>
+            {LAMPS.map((l, i) => (
+              <span
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  left: `${l.x}%`,
+                  top: `${l.y}%`,
+                  width: l.s,
+                  height: l.s,
+                  marginLeft: -l.s / 2,
+                  marginTop: -l.s / 2,
+                  background: `radial-gradient(circle, rgb(255 255 255 / 0.95), ${l.c} 35%, transparent 70%)`,
+                  filter: 'blur(4px)',
+                  animation: `lamp-flicker ${l.t}s ease-in-out ${l.d}s infinite`,
+                }}
+              />
+            ))}
+          </span>
+
+          {/* the frosted white layer: always there, a little thinner while lit so the colour shows */}
           <span
             aria-hidden="true"
             className="absolute inset-0 transition-opacity duration-700"
-            style={{ background: 'linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02)), rgb(18 18 22 / 0.55)', opacity: lit ? 0.3 : 1 }}
+            style={{
+              background:
+                'radial-gradient(circle at 50% 40%, rgb(255 255 255 / 0.56), rgb(238 238 244 / 0.40) 70%), linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(210 210 220 / 0.08))',
+              backdropFilter: 'blur(5px)',
+              WebkitBackdropFilter: 'blur(5px)',
+              opacity: lit ? 0.5 : 1,
+            }}
           />
-
-          {/* liquid colour swimming inside, only while mining */}
-          <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-0')}>
-            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.62, animation: 'radar-spin 7s linear infinite' }} />
-            <span
-              className="absolute inset-[-20%] mix-blend-screen blur-[10px]"
-              style={{
-                background: 'radial-gradient(circle at 28% 70%, rgb(255 103 120 / 0.55), transparent 42%), radial-gradient(circle at 75% 35%, rgb(141 159 255 / 0.6), transparent 45%), radial-gradient(circle at 60% 85%, rgb(255 186 113 / 0.5), transparent 40%)',
-                opacity: 0.7,
-                animation: 'radar-spin 11s linear infinite reverse',
-              }}
-            />
-            <span className="absolute inset-0 bg-[radial-gradient(circle,rgb(10_10_16/0.5)_0%,rgb(10_10_16/0.18)_45%,transparent_70%)]" />
-          </span>
+          {/* fine frosting grain */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 opacity-[0.22] mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' seed='7'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23n)'/%3E%3C/svg%3E\")",
+            }}
+          />
 
           {/* the spectrum rim: a faint whisper when off, full colour when mining */}
           <span
@@ -171,7 +212,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           <motion.span aria-hidden="true" className="pointer-events-none absolute inset-0 mix-blend-overlay" style={{ background: sheen }} />
 
           <Power
-            className={cn('relative transition-all duration-500', size === 'lg' ? 'size-9' : 'size-7', lit ? 'text-white drop-shadow-[0_0_6px_rgb(255_255_255/0.45)]' : 'text-white/75 group-hover:text-white/95')}
+            className={cn('relative transition-all duration-500', size === 'lg' ? 'size-9' : 'size-7', lit ? 'text-white drop-shadow-[0_0_6px_rgb(255_255_255/0.45)]' : 'text-[rgb(70_72_84)]/80 group-hover:text-[rgb(50_52_64)]/90')}
             strokeWidth={2}
             aria-hidden="true"
           />
