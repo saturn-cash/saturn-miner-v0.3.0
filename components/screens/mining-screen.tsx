@@ -94,8 +94,13 @@ function ConfigPanel() {
           </div>
         </div>
 
-        {config.mode === 'pool' && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col gap-5 overflow-hidden">
+        <p className="t-subhead secondary -mt-1 leading-relaxed">
+          {config.mode === 'pool'
+            ? 'Pool: every block anyone in the pool finds is shared by work, so rewards come steadily.'
+            : 'Solo: you only get paid when your computer finds a block itself, but then the whole reward is yours. No local node needed; Saturn Pool relays your blocks.'}
+        </p>
+        {(
+          <motion.div initial={false} className="flex flex-col gap-5 overflow-hidden">
             <Field id="pool-url" label="Pool URL" icon={Server} value={config.poolUrl} onChange={(poolUrl) => minerActions.updateConfig({ poolUrl })} />
             <Field id="worker" label="Worker name" icon={User} value={config.worker} onChange={(worker) => minerActions.updateConfig({ worker })} />
           </motion.div>
@@ -106,7 +111,7 @@ function ConfigPanel() {
           value={config.payoutAddress}
           onChange={(payoutAddress) => minerActions.updateConfig({ payoutAddress: payoutAddress.trim() })}
           placeholder="sat1…"
-          hint="Your Saturn Core receiving address. The pool pays every share you find to this address."
+          hint={config.mode === 'pool' ? 'Your share of every pool block is paid to this address.' : 'A block you find pays its full reward straight to this address.'}
         />
 
         <div>

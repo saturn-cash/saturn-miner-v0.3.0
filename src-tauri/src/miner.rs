@@ -363,7 +363,9 @@ fn stratum_thread(shared: Arc<Shared>, config: MinerConfig) {
         if !send(&mut writer, format!(r#"{{"id":1,"method":"mining.subscribe","params":["SaturnMiner/{}"]}}"#, env!("CARGO_PKG_VERSION"))) {
             continue;
         }
-        if !send(&mut writer, format!(r#"{{"id":2,"method":"mining.authorize","params":[{},"x"]}}"#, serde_json::Value::String(worker_name.clone()))) {
+        // solo: the pool builds this miner its own block template that pays its address in full
+        let password = if config.mode == "solo" { "solo" } else { "x" };
+        if !send(&mut writer, format!(r#"{{"id":2,"method":"mining.authorize","params":[{},"{password}"]}}"#, serde_json::Value::String(worker_name.clone()))) {
             continue;
         }
 
@@ -681,10 +683,6 @@ pub fn start_mining(state: tauri::State<'_, MinerHandle>, config: MinerConfig) -
         shared.running.store(false, Ordering::SeqCst);
         return Err("The payout address should start with sat1".into());
     }
-    if config.mode != "pool" {
-        shared.running.store(false, Ordering::SeqCst);
-        return Err("Solo mining needs a local Saturn Core node; use pool mode for now".into());
-    }
     let threads = config.threads.clamp(1, max_threads());
     shared.set_status("starting");
     *shared.started_at.lock().unwrap() = Some(Instant::now());
@@ -693,6 +691,9 @@ pub fn start_mining(state: tauri::State<'_, MinerHandle>, config: MinerConfig) -
     shared.blocks.store(0, Ordering::Relaxed);
     shared.pending.lock().unwrap().clear();
     shared.log("info", "MINER", format!("Starting SHA-256d engine on {threads} thread{}", if threads == 1 { "" } else { "s" }));
+    if config.mode == "solo" {
+        shared.log("info", "MINER", "Solo mode: any block you find pays its whole reward to your payout address");
+    }
 
     let s = shared.clone();
     let cfg = config.clone();
