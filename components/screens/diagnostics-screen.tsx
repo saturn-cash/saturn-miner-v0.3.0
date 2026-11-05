@@ -46,8 +46,12 @@ const CHECKS: Check[] = [
     id: 'pool',
     name: 'Pool connectivity',
     evaluate: (s) =>
-      s.config.mode === 'solo'
-        ? { result: 'pass', detail: 'Solo mode — pool not required' }
+      s.config.mode === 'node'
+        ? s.pool.connected
+          ? { result: 'pass', detail: 'Getting work from your own node' }
+          : { result: 'warn', detail: 'Solo on your node: needs the node running and in sync' }
+        : s.config.mode === 'solo'
+        ? { result: 'pass', detail: 'Solo through the pool' }
         : s.pool.connected
           ? { result: 'pass', detail: `${s.pool.latency}ms to ${s.config.poolUrl.replace('stratum+tcp://', '')}` }
           : { result: 'warn', detail: 'Pool connects when mining starts' },

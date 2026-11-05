@@ -85,10 +85,10 @@ function ConfigPanel() {
         <legend className="sr-only">Mining configuration</legend>
         <div>
           <Label className="mb-1.5">Mode</Label>
-          <div className="mac-segmented grid w-full grid-cols-2" role="radiogroup" aria-label="Mining mode">
-            {(['pool', 'solo'] as const).map((mode) => (
-              <button key={mode} type="button" role="radio" aria-checked={config.mode === mode} onClick={() => minerActions.updateConfig({ mode })} className="capitalize">
-                {mode}
+          <div className="mac-segmented grid w-full grid-cols-3" role="radiogroup" aria-label="Mining mode">
+            {([['pool', 'Pool'], ['solo', 'Solo'], ['node', 'Solo on my node']] as const).map(([mode, label]) => (
+              <button key={mode} type="button" role="radio" aria-checked={config.mode === mode} onClick={() => minerActions.updateConfig({ mode })}>
+                {label}
               </button>
             ))}
           </div>
@@ -97,9 +97,11 @@ function ConfigPanel() {
         <p className="t-subhead secondary -mt-1 leading-relaxed">
           {config.mode === 'pool'
             ? 'Pool: every block anyone in the pool finds is shared by work, so rewards come steadily.'
-            : 'Solo: you only get paid when your computer finds a block itself, but then the whole reward is yours. No local node needed; Saturn Pool relays your blocks.'}
+            : config.mode === 'solo'
+              ? 'Solo: you only get paid when your computer finds a block itself, but then the whole reward is yours. No local node needed; Saturn Pool relays your blocks.'
+              : 'Solo on my node: no pool at all. Work comes from the Saturn Core node on this computer and any block you find goes straight to it. Needs the node running and in sync (Network screen).'}
         </p>
-        {(
+        {config.mode !== 'node' && (
           <motion.div initial={false} className="flex flex-col gap-5 overflow-hidden">
             <Field id="pool-url" label="Pool URL" icon={Server} value={config.poolUrl} onChange={(poolUrl) => minerActions.updateConfig({ poolUrl })} />
             <Field id="worker" label="Worker name" icon={User} value={config.worker} onChange={(worker) => minerActions.updateConfig({ worker })} />

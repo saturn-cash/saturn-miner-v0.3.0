@@ -305,6 +305,8 @@ fn spawn_node(bin: &Path, dir: &Path) -> Result<Child, String> {
         .arg("-listen=1")
         .arg(format!("-addnode={SEED_NODE}"))
         .arg("-dnsseed=0")
+        // the fixed seed list is inherited from Bitcoin; those nodes are not Saturn peers
+        .arg("-fixedseeds=0")
         .arg(format!("-rpcport={RPC_PORT}"))
         .arg("-rpcbind=127.0.0.1")
         .arg("-rpcallowip=127.0.0.1")

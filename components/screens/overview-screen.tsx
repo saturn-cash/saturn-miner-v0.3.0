@@ -51,7 +51,7 @@ function Hero() {
 
   const line =
     status === 'mining'
-      ? `Mining in ${mode} mode on ${threads} threads`
+      ? `Mining ${mode === 'node' ? 'solo on your own node' : `in ${mode} mode`} on ${threads} threads`
       : status === 'starting'
         ? 'Engine spinning up'
         : status === 'stopping'

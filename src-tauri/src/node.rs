@@ -102,7 +102,7 @@ pub(crate) fn default_datadirs() -> Vec<PathBuf> {
 }
 
 /// (user, password) for the RPC call: explicit settings first, then the node's cookie file.
-fn resolve_auth(auth: &NodeAuth) -> Option<(String, String)> {
+pub(crate) fn resolve_auth(auth: &NodeAuth) -> Option<(String, String)> {
     if !auth.user.is_empty() {
         return Some((auth.user.clone(), auth.password.clone()));
     }

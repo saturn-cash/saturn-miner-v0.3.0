@@ -320,7 +320,8 @@ export const minerActions = {
     update((s) => ({ ...s, status: 'starting', log: [...s.log, makeLog('info', 'MINER', 'Spinning up SHA-256d workers…')] }))
     if (nativeMiner) {
       try {
-        await invokeCommand(TAURI_COMMANDS.start, { config: state.config })
+        const { rpcUrl, rpcUser, rpcPassword } = state.settings
+        await invokeCommand(TAURI_COMMANDS.start, { config: { ...state.config, rpcUrl, rpcUser, rpcPassword } })
       } catch (err) {
         update((s) => ({ ...s, status: 'idle', log: [...s.log, makeLog('error', 'MINER', `Failed to start: ${String(err)}`)] }))
       }

@@ -14,16 +14,27 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MinerConfig {
+    /// "pool" (shares, reward split), "solo" (through the pool, whole reward to you) or "node"
+    /// (solo on your own Saturn Core node, no pool at all)
     pub mode: String,
     pub pool_url: String,
     pub worker: String,
     pub payout_address: String,
     pub threads: usize,
     pub intensity: u32,
+    /// the node for "node" mode; empty user/password = its cookie file
+    #[serde(default)]
+    pub rpc_url: String,
+    #[serde(default)]
+    pub rpc_user: String,
+    #[serde(default)]
+    pub rpc_password: String,
 }
+
+mod own_node;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -547,8 +558,14 @@ fn worker_thread(shared: Arc<Shared>, index: usize, stride: usize, intensity: u3
     // intensity: fraction of time spent hashing. 100 = flat out.
     let duty = (intensity.clamp(5, 100)) as f64 / 100.0;
 
+    let mut found_on: Option<u64> = None;
     while shared.running.load(Ordering::Relaxed) {
         let gen = shared.job_gen.load(Ordering::Relaxed);
+        if found_on == Some(gen) {
+            thread::sleep(Duration::from_millis(20));
+            continue;
+        }
+        found_on = None;
         if gen != seen_gen || nonce == u32::MAX {
             seen_gen = gen;
             job = shared.job.read().unwrap().clone();
@@ -577,6 +594,9 @@ fn worker_thread(shared: Arc<Shared>, index: usize, stride: usize, intensity: u3
         }
         let Some(j) = job.as_ref() else { continue };
         let share_target = *shared.share_target.read().unwrap();
+        // a target of difficulty >= 1 always starts with three zero bytes, so most hashes can be
+        // dropped on that alone; easier targets (a test chain) need the full comparison
+        let quick = share_target[31] == 0 && share_target[30] == 0 && share_target[29] == 0;
 
         let batch_start = Instant::now();
         let batch = 8192u32;
@@ -589,8 +609,11 @@ fn worker_thread(shared: Arc<Shared>, index: usize, stride: usize, intensity: u3
             h.update(tail);
             let first = h.finalize();
             let hash: [u8; 32] = Sha256::digest(first).into();
-            if hash[31] == 0 && hash[30] == 0 && hash[29] == 0 && meets_target(&hash, &share_target) {
-                submit_share(&shared, j, &extranonce2, nonce, &hash);
+            if (!quick || (hash[31] == 0 && hash[30] == 0 && hash[29] == 0)) && meets_target(&hash, &share_target) && submit_share(&shared, j, &extranonce2, nonce, &hash) {
+                // a whole block: this work is spent; wait for the next job instead of finding
+                // more blocks at the same height (on an easy test chain that would be every hash)
+                found_on = Some(seen_gen);
+                break;
             }
             nonce += 1;
         }
@@ -605,7 +628,8 @@ fn worker_thread(shared: Arc<Shared>, index: usize, stride: usize, intensity: u3
     }
 }
 
-fn submit_share(shared: &Arc<Shared>, job: &Job, extranonce2: &[u8], nonce: u32, hash: &[u8; 32]) {
+/// Sends a share (or block) to the work source; returns true when it was a whole block.
+fn submit_share(shared: &Arc<Shared>, job: &Job, extranonce2: &[u8], nonce: u32, hash: &[u8; 32]) -> bool {
     let is_block = meets_target(hash, &job.block_target);
     if is_block {
         shared.blocks.fetch_add(1, Ordering::Relaxed);
@@ -622,10 +646,13 @@ fn submit_share(shared: &Arc<Shared>, job: &Job, extranonce2: &[u8], nonce: u32,
         nonce
     );
     shared.pending.lock().unwrap().insert(id, job.id.clone());
-    shared.log("info", "MINER", format!("Share found (difficulty {})", trim_float(hash_difficulty(hash))));
+    if !is_block {
+        shared.log("info", "MINER", format!("Share found (difficulty {})", trim_float(hash_difficulty(hash))));
+    }
     if let Some(tx) = shared.submit_tx.lock().unwrap().as_ref() {
         let _ = tx.send(msg);
     }
+    is_block
 }
 
 fn reverse(h: &[u8; 32]) -> [u8; 32] {
@@ -697,7 +724,12 @@ pub fn start_mining(state: tauri::State<'_, MinerHandle>, config: MinerConfig) -
 
     let s = shared.clone();
     let cfg = config.clone();
-    thread::Builder::new().name("stratum".into()).spawn(move || stratum_thread(s, cfg)).map_err(|e| e.to_string())?;
+    if config.mode == "node" {
+        // solo on your own node: work straight from Saturn Core, blocks submitted straight to it
+        thread::Builder::new().name("own-node".into()).spawn(move || own_node::node_thread(s, cfg)).map_err(|e| e.to_string())?;
+    } else {
+        thread::Builder::new().name("stratum".into()).spawn(move || stratum_thread(s, cfg)).map_err(|e| e.to_string())?;
+    }
     for i in 0..threads {
         let s = shared.clone();
         let intensity = config.intensity;
@@ -844,7 +876,7 @@ mod tests {
         let handle = MinerHandle::default();
         let shared = handle.0.clone();
         shared.running.store(true, Ordering::SeqCst);
-        let cfg = MinerConfig { mode: "pool".into(), pool_url: format!("stratum+tcp://127.0.0.1:{port}"), worker: "t".into(), payout_address: "sat1qtest".into(), threads: 2, intensity: 100 };
+        let cfg = MinerConfig { mode: "pool".into(), pool_url: format!("stratum+tcp://127.0.0.1:{port}"), worker: "t".into(), payout_address: "sat1qtest".into(), threads: 2, intensity: 100, ..Default::default() };
         let s = shared.clone();
         let c = cfg.clone();
         thread::spawn(move || stratum_thread(s, c));
@@ -931,7 +963,7 @@ mod live {
         let addr = std::env::var("SATURN_TEST_ADDR").expect("set SATURN_TEST_ADDR to a sat1 address");
         let shared = MinerHandle::default().0;
         shared.running.store(true, Ordering::SeqCst);
-        let cfg = MinerConfig { mode: "pool".into(), pool_url: url, worker: "selftest".into(), payout_address: addr, threads: 2, intensity: 100 };
+        let cfg = MinerConfig { mode: "pool".into(), pool_url: url, worker: "selftest".into(), payout_address: addr, threads: 2, intensity: 100, ..Default::default() };
         let s = shared.clone();
         let c = cfg.clone();
         thread::spawn(move || stratum_thread(s, c));

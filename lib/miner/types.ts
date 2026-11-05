@@ -40,7 +40,8 @@ export interface Peer {
 }
 
 export interface MinerConfig {
-  mode: 'solo' | 'pool'
+  /** pool: reward split; solo: through the pool, whole reward; node: solo on your own Saturn Core node */
+  mode: 'solo' | 'pool' | 'node'
   poolUrl: string
   worker: string
   payoutAddress: string
