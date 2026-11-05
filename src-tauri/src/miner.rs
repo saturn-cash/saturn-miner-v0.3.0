@@ -917,3 +917,40 @@ mod bench {
         println!("{} MH/s per thread (acc {acc})", n as f64 / secs / 1e6);
     }
 }
+
+/// End-to-end check against a running pool:
+/// `SATURN_TEST_POOL=stratum+tcp://127.0.0.1:33333 SATURN_TEST_ADDR=sat1… cargo test --release live_pool -- --ignored --nocapture`
+#[cfg(test)]
+mod live {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn live_pool() {
+        let url = std::env::var("SATURN_TEST_POOL").unwrap_or_else(|_| "stratum+tcp://pool.saturn.boats:3333".into());
+        let addr = std::env::var("SATURN_TEST_ADDR").expect("set SATURN_TEST_ADDR to a sat1 address");
+        let shared = MinerHandle::default().0;
+        shared.running.store(true, Ordering::SeqCst);
+        let cfg = MinerConfig { mode: "pool".into(), pool_url: url, worker: "selftest".into(), payout_address: addr, threads: 2, intensity: 100 };
+        let s = shared.clone();
+        let c = cfg.clone();
+        thread::spawn(move || stratum_thread(s, c));
+        for i in 0..2 {
+            let s = shared.clone();
+            thread::spawn(move || worker_thread(s, i, 2, 100));
+        }
+        let s = shared.clone();
+        thread::spawn(move || stats_thread(s, 2));
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(40) && shared.accepted.load(Ordering::Relaxed) < 5 {
+            thread::sleep(Duration::from_millis(500));
+        }
+        shared.running.store(false, Ordering::SeqCst);
+        let (a, r) = (shared.accepted.load(Ordering::Relaxed), shared.rejected.load(Ordering::Relaxed));
+        for e in shared.log.lock().unwrap().iter() {
+            println!("{} {} {}", e.level, e.source, e.message);
+        }
+        println!("accepted {a}, rejected {r}, hashrate {:.0} H/s", *shared.hashrate.lock().unwrap());
+        assert!(a > 0, "no shares accepted");
+        assert!(r <= a, "pool rejected more shares than it accepted");
+    }
+}

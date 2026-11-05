@@ -91,10 +91,12 @@ export function createInitialState(): MinerState {
       synced: true,
     },
     wallet: {
-      balance: 108.25,
-      immature: 50,
+      // the browser preview never shows coins nobody mined
+      balance: 0,
+      immature: 0,
+      poolPending: 0,
       address,
-      transactions: seedTransactions(address, now),
+      transactions: [],
     },
     blocks: seedBlocks(height, now),
     log: [

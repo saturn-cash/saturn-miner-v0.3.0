@@ -190,6 +190,7 @@ function LogFeedConnected() {
 function WalletPanel({ onNavigate }: { onNavigate: (id: ScreenId) => void }) {
   const balance = useMiner((s) => s.wallet.balance)
   const immature = useMiner((s) => s.wallet.immature)
+  const poolPending = useMiner((s) => s.wallet.poolPending)
   return (
     <Panel title="Wallet" action={<NavLink onClick={() => onNavigate('wallet')}>Open Wallet</NavLink>}>
       <Label>Available</Label>
@@ -203,6 +204,13 @@ function WalletPanel({ onNavigate }: { onNavigate: (id: ScreenId) => void }) {
           <Ticker value={immature} format={(n) => formatCoin(n, 2)} /> SAT
         </p>
         <p className="t-subhead secondary mt-1">Block rewards unlock after 100 confirmations.</p>
+      </div>
+      <div className="well mt-2 p-3">
+        <Label>Pool pending</Label>
+        <p className="mt-1 text-[15px] font-medium tabular-nums">
+          <Ticker value={poolPending} format={(n) => formatCoin(n, 4)} /> SAT
+        </p>
+        <p className="t-subhead secondary mt-1">Your share of pool blocks, paid to your sat1 address.</p>
       </div>
     </Panel>
   )

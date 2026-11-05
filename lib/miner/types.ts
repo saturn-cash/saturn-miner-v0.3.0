@@ -91,6 +91,8 @@ export interface MinerState {
   wallet: {
     balance: number
     immature: number
+    /** SAT the pool has credited to the payout address and not yet paid out */
+    poolPending: number
     address: string
     transactions: Transaction[]
   }

@@ -106,7 +106,7 @@ function enterNativeMode(maxThreads: number) {
     pool: { connected: false, latency: 0, difficulty: 0 },
     node: { connected: false, error: null, version: '', hasWallet: false, progress: 0 },
     network: { height: 0, difficulty: 0, networkHashrate: 0, peers: [], mempool: 0, synced: false },
-    wallet: { balance: 0, immature: 0, address: config.payoutAddress, transactions: [] },
+    wallet: { balance: 0, immature: 0, poolPending: 0, address: config.payoutAddress, transactions: [] },
     blocks: [],
     log: [
       makeLog('info', 'SYSTEM', 'Saturn Miner desktop engine ready. Mining is real; wallet and network data need a node.'),
@@ -133,6 +133,50 @@ interface NodeSnapshot {
   balance: number
   immature: number
   transactions: MinerState['wallet']['transactions']
+}
+
+interface PoolSnapshot {
+  reachable: boolean
+  error: string | null
+  height: number
+  difficulty: number
+  networkHashrate: number
+  poolHashrate: number
+  miners: number
+  pending: number
+  work: number
+  blocksFound: number
+}
+
+/** The pool's public stats API lives on port 8081 of the stratum host. */
+function poolApi(poolUrl: string) {
+  const host = poolUrl.replace(/^[a-z+]+:\/\//i, '').split(/[:/]/)[0] || 'pool.saturn.boats'
+  return `http://${host}:8081`
+}
+
+let poolWasReachable: boolean | null = null
+
+/**
+ * Network numbers and pool earnings straight from Saturn Pool, so the app shows the real chain even
+ * without a local Saturn Core node. A connected node's own numbers take precedence.
+ */
+async function tickPool() {
+  try {
+    const p = await invokeCommand<PoolSnapshot>(TAURI_COMMANDS.poolSnapshot, { api: poolApi(state.config.poolUrl), address: state.config.payoutAddress || null })
+    update((s) => {
+      let log = s.log
+      if (p.reachable && poolWasReachable !== true) log = [...log, makeLog('success', 'POOL', `Saturn Pool online: block ${p.height}, ${p.miners} miner${p.miners === 1 ? '' : 's'} hashing`)]
+      if (!p.reachable && poolWasReachable !== false) log = [...log, makeLog('warn', 'POOL', p.error ?? 'Saturn Pool unreachable')]
+      poolWasReachable = p.reachable
+      if (!p.reachable) return { ...s, log }
+      const network = s.node.connected
+        ? s.network
+        : { ...s.network, height: Math.max(p.height, s.network.height), difficulty: p.difficulty, networkHashrate: p.networkHashrate, synced: true }
+      return { ...s, log, network, wallet: { ...s.wallet, poolPending: p.pending } }
+    })
+  } catch {
+    /* the pool feed is best-effort */
+  }
 }
 
 let nodeInFlight = false
@@ -230,7 +274,8 @@ function startLoop() {
   timer = setInterval(() => {
     if (nativeMiner) {
       void tickTauri()
-      if (n++ % 5 === 0) void tickNode()
+      if (n % 5 === 0) void tickNode()
+      if (n++ % 10 === 0) void tickPool()
     } else setState(step(state))
   }, 1000)
 }

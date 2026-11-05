@@ -35,4 +35,5 @@ export const TAURI_COMMANDS = {
   bitaxeScan: 'bitaxe_scan',
   nodeRpc: 'node_rpc',
   nodeSnapshot: 'node_snapshot',
+  poolSnapshot: 'pool_snapshot',
 } as const
