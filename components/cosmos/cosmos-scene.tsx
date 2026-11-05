@@ -167,6 +167,11 @@ function getWaypoint(dest: DestinationId, t: number, out: View, aspect = 1.6) {
 
 /** Values shared by scene parts each frame (no React state). */
 const fx = { warp: 0, flash: 0, energy: 0 };
+const fxEnergy = {
+  get current() {
+    return fx.energy
+  },
+}
 const fxFlash = {
   get current() {
     return fx.flash;
@@ -1328,7 +1333,7 @@ export default function CosmosScene({
       <Stars />
       <Saturn energy={energy} pulseKey={pulseKey} hidden={photo} />
       {photo ? (
-        <PhotoBackdrop pulseKey={pulseKey} flash={fxFlash} />
+        <PhotoBackdrop pulseKey={pulseKey} flash={fxFlash} energy={fxEnergy} />
       ) : (
         <Moons />
       )}

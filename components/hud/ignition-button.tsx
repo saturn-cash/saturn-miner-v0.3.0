@@ -4,6 +4,7 @@ import { Power } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { minerActions, useMiner } from '@/lib/miner/store'
 import { cn } from '@/lib/utils'
+import { Cobwebs } from './cobwebs'
 
 const LABELS = {
   idle: 'Start Mining',
@@ -38,6 +39,9 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
         >
           <polygon points="50,3 90.7,26.5 90.7,73.5 50,97 9.3,73.5 9.3,26.5" fill="none" stroke="white" strokeOpacity={active ? 0.22 : 0.12} strokeWidth="0.5" strokeDasharray="1 3" />
         </motion.svg>
+
+        {/* idle for a while: cobwebs and dust, torn away when you start */}
+        <Cobwebs idle={status === 'idle'} />
 
         {/* glow behind the core */}
         <AnimatePresence>
