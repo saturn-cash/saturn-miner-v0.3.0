@@ -100,7 +100,7 @@ export function createInitialState(): MinerState {
     },
     blocks: seedBlocks(height, now),
     log: [
-      makeLog('info', 'SYSTEM', 'Saturn Miner v0.2.0-alpha initialised', now - 4000),
+      makeLog('info', 'SYSTEM', 'Saturn initialised', now - 4000),
       makeLog('info', 'NODE', 'Connected to saturnd via RPC 127.0.0.1:8332', now - 3200),
       makeLog('success', 'NODE', `Chain synced — tip at height ${height}`, now - 2400),
       makeLog('info', 'WALLET', 'Wallet loaded (descriptor, encrypted)', now - 1600),

@@ -92,7 +92,7 @@ export default function AppShell() {
       <div className="relative z-10 flex h-dvh">
         <Sidebar active={screen} onSelect={go} platform={platform} />
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <Topbar screen={screen} />
+          <Topbar screen={screen} platform={platform} />
           <main className="flex-1 overflow-y-auto px-5 pb-24 pt-5 md:px-7 md:pb-8">
             {booted && (
               <AnimatePresence mode="wait">

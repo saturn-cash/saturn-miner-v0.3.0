@@ -50,7 +50,7 @@ function tempTone(t: number | undefined) {
   return 'text-ok'
 }
 
-/** The pool settings that point a Bitaxe at the same pool Saturn Miner uses. */
+/** The pool settings that point a Bitaxe at the same pool Saturn uses. */
 function useSaturnPool(device?: Device) {
   const config = useMiner((s) => s.config)
   return useMemo(() => {
@@ -215,7 +215,7 @@ function EmptyFleet({ onAdd }: { onAdd: () => void }) {
         {[
           ['Power it up', 'Plug in your Bitaxe and join it to your Wi-Fi from its setup hotspot, the same way you would for AxeOS.'],
           ['Add it here', 'Type the IP address from the Bitaxe screen, or scan your network from the desktop app.'],
-          ['Point it at Saturn', 'One click sends it to the pool Saturn Miner uses, with your payout address and its own worker name.'],
+          ['Point it at Saturn', 'One click sends it to the pool Saturn uses, with your payout address and its own worker name.'],
         ].map(([t, b], i) => (
           <div key={t} className="well p-4">
             <p className="display text-[22px] font-bold text-primary">{i + 1}</p>
@@ -365,7 +365,7 @@ function OfflineState({ device }: { device: Device }) {
       {device.status === 'offline' && (
         <p className="max-w-[60ch] text-[13px] leading-relaxed text-muted-foreground">
           {browserNote
-            ? 'The browser preview can’t talk to devices on your network. Open Saturn Miner as the desktop app to control real Bitaxes, or add the demo device to try the controls.'
+            ? 'The browser preview can’t talk to devices on your network. Open Saturn as the desktop app to control real Bitaxes, or add the demo device to try the controls.'
             : `Check that it's powered on and on the same network, then retry. ${device.error ? `(${device.error})` : ''}`}
         </p>
       )}
@@ -470,7 +470,7 @@ function PoolTab({ device, onDone }: { device: Device; onDone: () => void }) {
         <div className="min-w-0">
           <p className="text-[14px] font-semibold">Mine for Saturn</p>
           <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
-            {saturn ? `${saturn.url}:${saturn.port} as ${saturn.user.slice(0, 14)}…${saturn.user.split('.').pop()}` : mode === 'solo' ? 'Saturn Miner is in solo mode. Switch to pool mode on the Mining screen, or enter a pool below.' : 'Set a pool on the Mining screen first.'}
+            {saturn ? `${saturn.url}:${saturn.port} as ${saturn.user.slice(0, 14)}…${saturn.user.split('.').pop()}` : mode === 'solo' ? 'Saturn is in solo mode. Switch to pool mode on the Mining screen, or enter a pool below.' : 'Set a pool on the Mining screen first.'}
           </p>
         </div>
         <button

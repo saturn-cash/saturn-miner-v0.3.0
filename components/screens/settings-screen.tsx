@@ -16,7 +16,7 @@ const TOGGLES: Array<{ key: BoolKey; label: string; description: string }> = [
   { key: 'sound', label: 'Sound', description: 'A space drone that rises with your hashrate, warp whooshes between destinations, and chimes for shares and blocks.' },
   { key: 'ecoOnBattery', label: 'Eco mode on battery', description: 'Halve intensity automatically when unplugged.' },
   { key: 'minimizeToTray', label: 'Keep mining when closed', description: 'Closing the window leaves the miner running in the menu bar or tray.' },
-  { key: 'launchOnStartup', label: 'Open at login', description: 'Start Saturn Miner when you log in.' },
+  { key: 'launchOnStartup', label: 'Open at login', description: 'Start Saturn when you log in.' },
 ]
 
 export function SettingsScreen() {

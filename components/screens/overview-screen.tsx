@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react'
 import { motion } from 'motion/react'
 import { formatCoin, formatDuration, formatHashrate, formatInt, hashrateUnit, shortHash, timeAgo } from '@/lib/format'
 import { useMiner } from '@/lib/miner/store'
+import { useWallet } from '@/lib/wallet/store'
 import { AreaChart } from '../hud/charts'
 import { IgnitionButton } from '../hud/ignition-button'
 import { LogFeed } from '../hud/log-feed'
@@ -188,8 +189,13 @@ function LogFeedConnected() {
 }
 
 function WalletPanel({ onNavigate }: { onNavigate: (id: ScreenId) => void }) {
-  const balance = useMiner((s) => s.wallet.balance)
-  const immature = useMiner((s) => s.wallet.immature)
+  const nodeBalance = useMiner((s) => s.wallet.balance)
+  const nodeImmature = useMiner((s) => s.wallet.immature)
+  const hasWallet = useWallet((s) => s.exists)
+  const spendableSats = useWallet((s) => s.spendableSats)
+  const immatureSats = useWallet((s) => s.immatureSats)
+  const balance = hasWallet ? spendableSats / 1e8 : nodeBalance
+  const immature = hasWallet ? immatureSats / 1e8 : nodeImmature
   const poolPending = useMiner((s) => s.wallet.poolPending)
   return (
     <Panel title="Wallet" action={<NavLink onClick={() => onNavigate('wallet')}>Open Wallet</NavLink>}>

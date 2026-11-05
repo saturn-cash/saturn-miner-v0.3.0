@@ -4,8 +4,8 @@ import '@fontsource-variable/jetbrains-mono/wght.css'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Saturn Miner',
-  description: 'Saturn Miner: a desktop miner for the Saturn Core blockchain that flies you around the Saturn system while you hash.',
+  title: 'Saturn',
+  description: 'Saturn: a desktop miner and wallet for the Saturn Core blockchain that flies you around the Saturn system while you hash.',
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     apple: '/apple-icon.png',

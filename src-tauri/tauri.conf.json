@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Saturn Miner",
-  "version": "0.5.0",
+  "productName": "Saturn",
+  "version": "0.6.0",
   "identifier": "boats.saturn.miner",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Saturn Miner",
+        "title": "Saturn",
         "width": 1440,
         "height": 920,
         "minWidth": 960,
@@ -36,8 +36,8 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
-    "shortDescription": "Desktop miner for Saturn Core",
-    "longDescription": "Saturn Miner flies you around the Saturn system while you mine, and controls your Bitaxe hardware over your local network.",
+    "shortDescription": "Saturn miner and wallet",
+    "longDescription": "Saturn mines Saturn (SAT), holds your wallet, and controls your Bitaxe hardware over your local network.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

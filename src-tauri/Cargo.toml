@@ -1,6 +1,6 @@
 [package]
 name = "saturn-miner"
-version = "0.5.0"
+version = "0.6.0"
 description = "Saturn Miner: desktop miner and Bitaxe controller for Saturn Core"
 edition = "2021"
 rust-version = "1.77"
@@ -20,9 +20,20 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 futures = "0.3"
 local-ip-address = "0.6"
 sha2 = "0.10"
+# in-app wallet: BIP39 recovery phrase, BIP84 keys, P2WPKH signing
+bitcoin = { version = "0.32", features = ["rand-std"] }
+bip39 = { version = "2", features = ["rand"] }
+
+# the recovery phrase is kept in the OS keychain where there is one (Keychain on macOS, Credential
+# Manager on Windows); Linux keeps it in a file only this user can read
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
 
 [profile.release]
 codegen-units = 1
 lto = true
 opt-level = 3
 strip = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

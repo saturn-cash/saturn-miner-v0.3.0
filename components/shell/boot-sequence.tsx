@@ -66,7 +66,7 @@ export function BootSequence({ onDone, cinematic }: { onDone: () => void; cinema
   return (
     <AnimatePresence>
       {phase !== 'done' && (
-        <motion.div key="boot" className="fixed inset-0 z-50 grid place-items-center" exit={{ opacity: 0 }} transition={{ duration: 0.8 }} onClick={skip} role="status" aria-label="Saturn Miner is launching">
+        <motion.div key="boot" className="fixed inset-0 z-50 grid place-items-center" exit={{ opacity: 0 }} transition={{ duration: 0.8 }} onClick={skip} role="status" aria-label="Saturn is launching">
           <motion.div
             aria-hidden="true"
             className="absolute inset-0 bg-[var(--void)]"
@@ -86,7 +86,7 @@ export function BootSequence({ onDone, cinematic }: { onDone: () => void; cinema
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  Saturn Miner
+                  Saturn
                 </motion.h1>
                 <div className="secondary mt-6 h-4 text-[12px]">
                   <AnimatePresence mode="wait">

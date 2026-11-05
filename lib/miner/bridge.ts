@@ -36,4 +36,13 @@ export const TAURI_COMMANDS = {
   nodeRpc: 'node_rpc',
   nodeSnapshot: 'node_snapshot',
   poolSnapshot: 'pool_snapshot',
+  walletInfo: 'wallet_info',
+  walletCreate: 'wallet_create',
+  walletImport: 'wallet_import',
+  walletReveal: 'wallet_reveal',
+  walletDelete: 'wallet_delete',
+  walletDescriptors: 'wallet_descriptors',
+  walletBalance: 'wallet_balance',
+  walletSend: 'wallet_send',
+  walletCheckAddress: 'wallet_check_address',
 } as const

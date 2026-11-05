@@ -109,7 +109,7 @@ function enterNativeMode(maxThreads: number) {
     wallet: { balance: 0, immature: 0, poolPending: 0, address: config.payoutAddress, transactions: [] },
     blocks: [],
     log: [
-      makeLog('info', 'SYSTEM', 'Saturn Miner desktop engine ready. Mining is real; wallet and network data need a node.'),
+      makeLog('info', 'SYSTEM', 'Saturn is ready. Mining is real, and network data comes from Saturn Pool.'),
       makeLog('info', 'SYSTEM', `${maxThreads} CPU threads available`),
       ...(config.payoutAddress ? [] : [makeLog('warn', 'MINER', 'Set your sat1 payout address on the Mining screen before you start')]),
     ],
@@ -149,7 +149,7 @@ interface PoolSnapshot {
 }
 
 /** The pool's public stats API lives on port 8081 of the stratum host. */
-function poolApi(poolUrl: string) {
+export function poolApi(poolUrl: string) {
   const host = poolUrl.replace(/^[a-z+]+:\/\//i, '').split(/[:/]/)[0] || 'pool.saturn.boats'
   return `http://${host}:8081`
 }
@@ -351,7 +351,7 @@ export const minerActions = {
     if (!nativeMiner) return
     try {
       const { rpcUrl, rpcUser, rpcPassword } = state.settings
-      const addr = await invokeCommand<string>(TAURI_COMMANDS.nodeRpc, { auth: { url: rpcUrl, user: rpcUser, password: rpcPassword }, method: 'getnewaddress', params: ['Saturn Miner', 'bech32'] })
+      const addr = await invokeCommand<string>(TAURI_COMMANDS.nodeRpc, { auth: { url: rpcUrl, user: rpcUser, password: rpcPassword }, method: 'getnewaddress', params: ['Saturn', 'bech32'] })
       if (typeof addr === 'string' && addr.startsWith('sat1')) {
         minerActions.updateConfig({ payoutAddress: addr })
         update((s) => ({ ...s, log: [...s.log, makeLog('success', 'WALLET', `Payout address set to ${addr}`)] }))

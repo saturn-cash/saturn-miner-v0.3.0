@@ -5,7 +5,9 @@ import { useCosmosUi } from '@/lib/cosmos/store'
 import { formatHashrate, formatInt } from '@/lib/format'
 import { minerActions, useMiner } from '@/lib/miner/store'
 import { cn } from '@/lib/utils'
+import type { Platform } from '@/lib/platform'
 import { type ScreenId, screenMeta } from './destinations'
+import { WindowControls } from './window-controls'
 
 function compactKm(km: number) {
   if (km >= 1e9) return `${(km / 1e9).toFixed(2)}B km`
@@ -47,7 +49,7 @@ function StatusCapsule() {
  * Unified macOS toolbar: title with a subtitle (macOS 11+ style) on the leading side, status and the
  * primary action on the trailing side. The whole strip drags the window.
  */
-export function Topbar({ screen }: { screen: ScreenId }) {
+export function Topbar({ screen, platform = 'web' }: { screen: ScreenId; platform?: Platform }) {
   const meta = screenMeta(screen)
   const status = useMiner((s) => s.status)
   const mining = status === 'mining'
@@ -70,6 +72,7 @@ export function Topbar({ screen }: { screen: ScreenId }) {
           {mining ? <Square className="size-3 fill-current" aria-hidden="true" /> : <Play className="size-3 fill-current" aria-hidden="true" />}
           {mining ? 'Stop' : 'Start Mining'}
         </button>
+        {platform === 'desktop' && <WindowControls />}
       </div>
     </header>
   )
