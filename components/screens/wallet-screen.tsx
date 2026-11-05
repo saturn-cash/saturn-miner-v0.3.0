@@ -33,19 +33,19 @@ export function WalletScreen() {
       <section className="flex min-h-[min(44vh,420px)] flex-col justify-end pb-2 xl:col-span-3" aria-label="Balance">
         <Label className="text-foreground/75">Available to spend</Label>
         <p className="mt-1 flex flex-wrap items-baseline gap-4">
-          <Ticker value={wallet.balance} format={(n) => formatCoin(n, 4)} className="display gold-text text-[length:calc(clamp(48px,7.5vw,124px)*var(--ds))] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
-          <span className="text-[clamp(22px,2.2vw,32px)] font-semibold tracking-[-0.02em] text-white/70">SAT</span>
+          <Ticker value={wallet.balance} format={(n) => formatCoin(n, 4)} className="display gold-text text-[clamp(44px,4.8vw,68px)] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
+          <span className="text-[clamp(17px,1.6vw,22px)] font-medium text-white/55">SAT</span>
         </p>
-        <dl className="glass-quiet mt-6 grid max-w-[560px] grid-cols-2 gap-px overflow-hidden !rounded-2xl backdrop-blur-xl">
-          <div className="bg-[rgb(8_5_18/0.55)] px-5 py-4">
-            <dt className="text-[12px] text-muted-foreground">Maturing</dt>
-            <dd className="font-display mt-1 text-[length:calc(18px*var(--ds))] tabular-nums">
+        <dl className="glass-quiet mt-6 grid max-w-[560px] grid-cols-2 gap-px overflow-hidden !rounded-xl backdrop-blur-xl">
+          <div className="bg-[rgb(28_28_30/0.6)] px-5 py-4">
+            <dt className="t-subhead secondary">Maturing</dt>
+            <dd className="display mt-1 text-[18px] tabular-nums">
               <Ticker value={wallet.immature} format={(n) => formatCoin(n, 4)} /> SAT
             </dd>
           </div>
-          <div className="bg-[rgb(8_5_18/0.55)] px-5 py-4">
-            <dt className="text-[12px] text-muted-foreground">Total</dt>
-            <dd className="font-display mt-1 text-[length:calc(18px*var(--ds))] tabular-nums">
+          <div className="bg-[rgb(28_28_30/0.6)] px-5 py-4">
+            <dt className="t-subhead secondary">Total</dt>
+            <dd className="display mt-1 text-[18px] tabular-nums">
               <Ticker value={wallet.balance + wallet.immature} format={(n) => formatCoin(n, 4)} /> SAT
             </dd>
           </div>
@@ -59,7 +59,7 @@ export function WalletScreen() {
 
       <Panel title="Transactions" className="xl:col-span-2">
         {wallet.transactions.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">{source === 'tauri' && !nodeWallet ? 'Connect a Saturn Core node with a wallet to see transactions here.' : 'No transactions yet. Start mining to earn your first reward.'}</p>
+          <p className="py-8 text-center text-[13px] text-muted-foreground">{source === 'tauri' && !nodeWallet ? 'Connect a Saturn Core node with a wallet to see transactions here.' : 'No transactions yet. Start mining to earn your first reward.'}</p>
         ) : (
           <ul className="divide-y divide-[rgb(234_240_255/0.06)]">
             {wallet.transactions.slice(0, 14).map((tx, i) => {
@@ -72,21 +72,21 @@ export function WalletScreen() {
                     <Icon className="size-4" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm">{meta.label}</p>
-                    <p className="truncate font-mono text-[11px] text-muted-foreground">{shortHash(tx.address, 12, 6)}</p>
+                    <p className="text-[13px]">{meta.label}</p>
+                    <p className="truncate font-mono t-subhead secondary">{shortHash(tx.address, 12, 6)}</p>
                   </div>
                   <div className="hidden w-40 sm:block">
                     <div className="h-1 overflow-hidden rounded-full bg-muted">
                       <motion.div className={cn('h-full', mature ? 'bg-accent' : 'bg-primary')} animate={{ width: `${Math.min(100, tx.confirmations)}%` }} />
                     </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{tx.confirmations >= 100 ? '100+' : tx.confirmations} confirmations</p>
+                    <p className="mt-1 t-subhead secondary">{tx.confirmations >= 100 ? '100+' : tx.confirmations} confirmations</p>
                   </div>
                   <div className="text-right">
-                    <p className={cn('font-display text-[length:calc(15px*var(--ds))] tabular-nums', tx.type === 'send' ? 'text-muted-foreground' : 'text-primary')}>
+                    <p className={cn('display text-[15px] tabular-nums', tx.type === 'send' ? 'text-muted-foreground' : 'text-primary')}>
                       {tx.type === 'send' ? '−' : '+'}
                       {formatCoin(Math.abs(tx.amount), 4)}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">{timeAgo(tx.time)}</p>
+                    <p className="t-subhead secondary">{timeAgo(tx.time)}</p>
                   </div>
                 </motion.li>
               )
@@ -102,7 +102,7 @@ export function WalletScreen() {
           <button
             type="button"
             onClick={() => void minerActions.useNodeAddress()}
-            className="mt-3 w-full rounded-full px-4 py-2 text-[13px] font-medium text-primary shadow-[inset_0_0_0_1px_rgb(242_182_109/0.45)] transition-colors hover:bg-primary/10"
+            className="mac-button mt-3 w-full"
           >
             Use a fresh address from my node's wallet
           </button>
@@ -110,12 +110,12 @@ export function WalletScreen() {
         <button
           type="button"
           onClick={copy}
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary/12 px-3 py-2.5 shadow-[inset_0_0_0_1px_rgb(242_182_109/0.45)] text-[13px] font-medium text-primary transition-colors hover:bg-primary/20"
+          className="mac-button mt-3 w-full"
         >
           {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
           {copied ? 'Copied' : 'Copy address'}
         </button>
-        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">Rewards from solo blocks and pool payouts land here. Keep your wallet backed up from Saturn Core.</p>
+        <p className="mt-4 t-subhead secondary leading-relaxed">Rewards from solo blocks and pool payouts land here. Keep your wallet backed up from Saturn Core.</p>
       </Panel>
     </div>
   )

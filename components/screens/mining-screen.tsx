@@ -41,7 +41,7 @@ function EnginePanel() {
         <Gauge value={power} max={180} label="Power" display={power.toFixed(0)} unit="W" tone="cyan" />
         <Gauge value={efficiency} max={2} label="Efficiency" display={efficiency.toFixed(2)} unit="MH/W" />
       </div>
-      <p className="mt-4 text-center text-[13px] text-muted-foreground">
+      <p className="secondary mt-4 text-center">
         Combined output <span className="text-primary">{formatHashrate(hashrate)}</span>
       </p>
     </Panel>
@@ -57,7 +57,7 @@ function ThreadsPanel() {
       <Bars values={active.length ? active : Array(threads).fill(0)} max={16e6} className="h-40" />
       <div className="mt-3 grid gap-1" style={{ gridTemplateColumns: `repeat(${threads}, minmax(0, 1fr))` }}>
         {Array.from({ length: threads }, (_, i) => (
-          <span key={i} className="text-center text-[10px] text-muted-foreground">
+          <span key={i} className="t-caption tertiary text-center">
             T{i}
           </span>
         ))}
@@ -68,7 +68,7 @@ function ThreadsPanel() {
 
 function ControlPanel() {
   return (
-    <Panel title="Ignition" bodyClassName="grid place-items-center py-8">
+    <Panel title="Reactor" bodyClassName="grid place-items-center py-6">
       <IgnitionButton />
     </Panel>
   )
@@ -81,22 +81,14 @@ function ConfigPanel() {
 
   return (
     <Panel title="Configuration">
-      <fieldset disabled={locked} className="flex flex-col gap-5 disabled:opacity-60">
+      <fieldset disabled={locked} className="flex flex-col gap-4 disabled:opacity-60">
         <legend className="sr-only">Mining configuration</legend>
         <div>
-          <Label className="mb-2">Mode</Label>
-          <div className="relative grid grid-cols-2 rounded-full bg-[rgb(234_240_255/0.04)] p-1 shadow-[inset_0_0_0_1px_rgb(234_240_255/0.08)]" role="radiogroup" aria-label="Mining mode">
+          <Label className="mb-1.5">Mode</Label>
+          <div className="mac-segmented grid w-full grid-cols-2" role="radiogroup" aria-label="Mining mode">
             {(['pool', 'solo'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={config.mode === mode}
-                onClick={() => minerActions.updateConfig({ mode })}
-                className={cn('relative rounded-full px-3 py-1.5 text-[13px] font-medium capitalize transition-colors', config.mode === mode ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
-              >
-                {config.mode === mode && <motion.span layoutId="mode-pill" className="absolute inset-0 rounded-full bg-primary" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
-                <span className="relative">{mode}</span>
+              <button key={mode} type="button" role="radio" aria-checked={config.mode === mode} onClick={() => minerActions.updateConfig({ mode })} className="capitalize">
+                {mode}
               </button>
             ))}
           </div>
@@ -118,25 +110,25 @@ function ConfigPanel() {
         />
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1.5 flex items-center justify-between">
             <Label>
               <Cpu className="mr-1 inline size-3" aria-hidden="true" />
               Threads
             </Label>
-            <span className="font-display text-[length:calc(13px*var(--ds))] text-primary">
-              {config.threads} / {maxThreads}
+            <span className="t-subhead secondary tabular-nums">
+              {config.threads} of {maxThreads}
             </span>
           </div>
           <Slider value={[config.threads]} min={1} max={maxThreads} step={1} onValueChange={(v) => minerActions.updateConfig({ threads: Array.isArray(v) ? v[0] : (v as number) })} aria-label="Thread count" />
         </div>
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1.5 flex items-center justify-between">
             <Label>Intensity</Label>
-            <span className="font-display text-[length:calc(13px*var(--ds))] text-primary">{config.intensity}%</span>
+            <span className="t-subhead secondary tabular-nums">{config.intensity}%</span>
           </div>
           <Slider value={[config.intensity]} min={10} max={100} step={5} onValueChange={(v) => minerActions.updateConfig({ intensity: Array.isArray(v) ? v[0] : (v as number) })} aria-label="Mining intensity" />
         </div>
-        {locked && <p className="text-xs text-muted-foreground">Stop mining to change these settings.</p>}
+        {locked && <p className="t-subhead secondary">Stop mining to change these settings.</p>}
       </fieldset>
     </Panel>
   )
@@ -145,12 +137,12 @@ function ConfigPanel() {
 function Field({ id, label, value, onChange, icon: Icon, placeholder, hint }: { id: string; label: string; value: string; onChange: (v: string) => void; icon?: typeof Server; placeholder?: string; hint?: string }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-[12.5px] text-muted-foreground">
+      <label htmlFor={id} className="t-subhead secondary mb-1 block">
         {Icon && <Icon className="mr-1 inline size-3" aria-hidden="true" />}
         {label}
       </label>
-      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-10 rounded-xl font-mono text-[12px]" spellCheck={false} />
-      {hint && <p className="mt-1.5 text-[11.5px] leading-snug text-white/45">{hint}</p>}
+      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-mono text-[12px]" spellCheck={false} />
+      {hint && <p className="t-subhead tertiary mt-1 leading-snug">{hint}</p>}
     </div>
   )
 }

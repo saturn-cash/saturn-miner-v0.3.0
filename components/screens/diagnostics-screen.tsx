@@ -118,8 +118,8 @@ export function DiagnosticsScreen() {
                   </AnimatePresence>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm">{c.name}</p>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground">{r?.detail ?? (active ? 'Probing…' : 'Waiting')}</p>
+                  <p className="text-[13px]">{c.name}</p>
+                  <p className="truncate font-mono t-subhead secondary">{r?.detail ?? (active ? 'Probing…' : 'Waiting')}</p>
                 </div>
                 {r && <span className={cn('text-[12px] font-medium', TONE[r.result])}>{WORD[r.result]}</span>}
               </li>
@@ -135,14 +135,14 @@ export function DiagnosticsScreen() {
             <motion.circle cx="50" cy="50" r="44" fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" pathLength={1} strokeDasharray="1 1" animate={{ strokeDashoffset: 1 - progress }} transition={{ duration: 0.4 }} style={{ filter: 'drop-shadow(0 0 6px var(--primary))' }} />
           </svg>
           <div className="text-center">
-            <p className="display text-[length:calc(34px*var(--ds))] tabular-nums">{Math.round(progress * 100)}%</p>
+            <p className="display text-[34px] tabular-nums">{Math.round(progress * 100)}%</p>
             <Label>{running ? 'Scanning' : index >= CHECKS.length ? 'Done' : 'Ready to scan'}</Label>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           {(['pass', 'warn', 'fail'] as const).map((k) => (
             <div key={k} className="well py-2">
-              <p className={cn('font-display text-[length:calc(22px*var(--ds))] font-semibold', TONE[k])}>{counts[k]}</p>
+              <p className={cn('display text-[22px] font-semibold', TONE[k])}>{counts[k]}</p>
               <Label>{WORD[k]}</Label>
             </div>
           ))}
@@ -151,7 +151,7 @@ export function DiagnosticsScreen() {
           type="button"
           onClick={run}
           disabled={running}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 shadow-[0_0_30px_-6px_var(--primary)] text-[13px] font-semibold text-primary-foreground transition hover:brightness-110 disabled:opacity-60"
+          data-variant="primary" className="mac-button"
         >
           {running ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
           {running ? 'Running' : 'Run diagnostics'}

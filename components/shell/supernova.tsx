@@ -80,7 +80,7 @@ export function Supernova() {
           ))}
           <motion.div className="relative px-6 text-center" initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 140, damping: 13, delay: 0.15 }}>
             <p className="text-[15px] font-medium text-accent">{c.preview ? 'Preview: you found a block' : 'You found a block'}</p>
-            <p className="display gold-text mt-2 text-[length:calc(clamp(48px,10vw,140px)*var(--ds))] drop-shadow-[0_0_60px_rgb(242_182_109/0.55)]">#{formatInt(c.height)}</p>
+            <p className="display gold-text mt-2 text-[clamp(44px,7vw,96px)] drop-shadow-[0_0_60px_rgb(242_182_109/0.55)]">#{formatInt(c.height)}</p>
             <p className="display mt-4 text-[length:calc(clamp(22px,3vw,36px)*var(--ds))] text-foreground">+{c.reward} SAT</p>
             <p className="mt-4 text-[13px] text-muted-foreground">Reward unlocks after 100 confirmations. Click anywhere to close.</p>
           </motion.div>

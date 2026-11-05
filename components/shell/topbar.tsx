@@ -1,10 +1,10 @@
 'use client'
 
-import { AnimatePresence, motion } from 'motion/react'
+import { Play, Square } from 'lucide-react'
 import { useCosmosUi } from '@/lib/cosmos/store'
 import { formatHashrate, formatInt } from '@/lib/format'
-import { useMiner } from '@/lib/miner/store'
-import { SaturnLogo } from './saturn-logo'
+import { minerActions, useMiner } from '@/lib/miner/store'
+import { cn } from '@/lib/utils'
 import { type ScreenId, screenMeta } from './destinations'
 
 function compactKm(km: number) {
@@ -13,7 +13,7 @@ function compactKm(km: number) {
   return `${formatInt(km)} km`
 }
 
-/** One quiet status capsule instead of a row of chips. */
+/** Status readout in the toolbar: a dot, the miner state, and where the ship is. */
 function StatusCapsule() {
   const status = useMiner((s) => s.status)
   const hashrate = useMiner((s) => s.hashrate)
@@ -26,17 +26,14 @@ function StatusCapsule() {
   const mining = status === 'mining'
 
   return (
-    <div className="glass flex items-center gap-3 !rounded-full py-2 pl-3.5 pr-4 text-[13px]" aria-live="off">
-      <span className="relative flex size-2.5">
-        {mining && <span className="absolute inset-0 animate-ping rounded-full bg-ok opacity-60" />}
-        <span className={mining ? 'relative size-2.5 rounded-full bg-ok' : 'relative size-2.5 rounded-full bg-white/35'} />
-      </span>
-      <span className="font-semibold tabular-nums">{mining ? formatHashrate(hashrate) : status === 'idle' ? 'Idle' : status === 'starting' ? 'Starting' : 'Stopping'}</span>
-      <span className="hidden h-4 w-px bg-white/15 sm:block" aria-hidden="true" />
-      <span className="hidden tabular-nums text-white/60 sm:inline">{traveling ? `${compactKm(velocity)}/s` : `${compactKm(altitude)} up`}</span>
+    <div className="flex h-[26px] items-center gap-2.5 rounded-md bg-white/[0.06] px-2.5 text-[12px] shadow-[inset_0_0_0_0.5px_rgb(255_255_255/0.08)]" aria-live="off">
+      <span className={cn('size-[7px] rounded-full', mining ? 'bg-ok shadow-[0_0_6px_var(--ok)]' : 'bg-white/30')} aria-hidden="true" />
+      <span className="font-medium tabular-nums">{mining ? formatHashrate(hashrate) : status === 'idle' ? 'Idle' : status === 'starting' ? 'Starting' : 'Stopping'}</span>
+      <span className="hidden h-3 w-px bg-white/15 lg:block" aria-hidden="true" />
+      <span className="secondary hidden tabular-nums lg:inline">{traveling ? `${compactKm(velocity)}/s` : `${compactKm(altitude)} up`}</span>
       {(source === 'simulation' || !synced) && (
         <>
-          <span className="hidden h-4 w-px bg-white/15 md:block" aria-hidden="true" />
+          <span className="hidden h-3 w-px bg-white/15 md:block" aria-hidden="true" />
           <span className="hidden text-warn md:inline" title={source === 'simulation' ? 'Browser preview: all numbers are simulated' : nodeUp ? 'Saturn Core is still syncing' : 'Wallet and network data need a Saturn Core node (Settings)'}>
             {source === 'simulation' ? 'Simulated' : nodeUp ? 'Syncing' : 'No node'}
           </span>
@@ -46,20 +43,34 @@ function StatusCapsule() {
   )
 }
 
+/**
+ * Unified macOS toolbar: title with a subtitle (macOS 11+ style) on the leading side, status and the
+ * primary action on the trailing side. The whole strip drags the window.
+ */
 export function Topbar({ screen }: { screen: ScreenId }) {
   const meta = screenMeta(screen)
+  const status = useMiner((s) => s.status)
+  const mining = status === 'mining'
+  const busy = status === 'starting' || status === 'stopping'
   return (
-    <header className="relative z-10 flex shrink-0 items-start justify-between gap-4 px-5 pb-2 pt-6 md:px-10 md:pt-8">
-      <div className="flex min-w-0 items-center gap-4">
-        <SaturnLogo className="hidden size-11 shrink-0 md:block" />
-        <AnimatePresence mode="wait">
-          <motion.div key={screen} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} className="min-w-0">
-            <h1 className="truncate text-[30px] font-bold leading-none tracking-[-0.035em] md:text-[34px]">{meta.label}</h1>
-            <p className="mt-1.5 text-[15px] leading-none text-white/55">{meta.place}</p>
-          </motion.div>
-        </AnimatePresence>
+    <header data-tauri-drag-region className="toolbar relative z-10 flex h-[52px] shrink-0 items-center justify-between gap-4 px-5">
+      <div data-tauri-drag-region className="min-w-0">
+        <h1 className="t-title3 truncate leading-[18px]">{meta.label}</h1>
+        <p className="t-subhead secondary truncate">{meta.place}</p>
       </div>
-      <StatusCapsule />
+      <div className="flex items-center gap-2">
+        <StatusCapsule />
+        <button
+          type="button"
+          className="mac-button"
+          data-variant={mining ? undefined : 'primary'}
+          disabled={busy}
+          onClick={() => (mining ? minerActions.stop() : minerActions.start())}
+        >
+          {mining ? <Square className="size-3 fill-current" aria-hidden="true" /> : <Play className="size-3 fill-current" aria-hidden="true" />}
+          {mining ? 'Stop' : 'Start Mining'}
+        </button>
+      </div>
     </header>
   )
 }
