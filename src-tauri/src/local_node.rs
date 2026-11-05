@@ -26,7 +26,12 @@ const SEED_NODE: &str = "pool.saturn.boats:9999";
 /// Hashes of the release archives, so a tampered download is refused even if SHA256SUMS were
 /// replaced too. Empty means "trust SHA256SUMS from the same release" (for builds made before the
 /// archives existed).
-const PINNED: &[(&str, &str)] = &[];
+const PINNED: &[(&str, &str)] = &[
+    ("saturn-core-32.1-saturn2-arm64-apple-darwin.tar.gz", "94af68e5dcc0846a49160647eeec1e0c9659472aeb36a29b4925885e67ef02d6"),
+    ("saturn-core-32.1-saturn2-win64.zip", "864f0fbd60e233cee3b007698fbfe43062e0f80fba086959cfa9d02ff31d4411"),
+    ("saturn-core-32.1-saturn2-x86_64-apple-darwin.tar.gz", "2fefecfce37758778f3fdaf9547aea579302a75b7c1d355d5ce7f821a719bb11"),
+    ("saturn-core-32.1-saturn2-x86_64-linux-gnu.tar.gz", "699850ca344d12cdc474ea52615bbf62cfa7c4b646ce06fabaf36369be781289"),
+];
 
 fn asset_name() -> Option<String> {
     let suffix = if cfg!(all(target_os = "windows", target_arch = "x86_64")) {
@@ -452,6 +457,24 @@ mod tests {
         }
         let log = std::fs::read_to_string(dir.join("debug.log")).unwrap();
         assert!(log.contains("Shutdown: done") || log.contains("Shutdown done"), "no clean shutdown in debug.log:\n{}", &log[log.len().saturating_sub(1500)..]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Unpacks a real release archive: CORE_ARCHIVE=/path/to/saturn-core-…tar.gz cargo test --lib local_node -- --ignored
+    #[test]
+    #[ignore]
+    fn unpacks_a_release_archive() {
+        let path = PathBuf::from(std::env::var("CORE_ARCHIVE").expect("set CORE_ARCHIVE"));
+        let data = std::fs::read(&path).unwrap();
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        let got = format!("{:x}", Sha256::digest(&data));
+        assert_eq!(PINNED.iter().find(|(n, _)| *n == name).map(|(_, h)| *h), Some(got.as_str()), "pinned hash");
+        let dir = std::env::temp_dir().join(format!("saturn-release-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        unpack(&name, &data, &dir).unwrap();
+        assert!(dir.join(format!("saturnd{EXE}")).is_file());
+        assert!(dir.join(format!("saturn-cli{EXE}")).is_file());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
