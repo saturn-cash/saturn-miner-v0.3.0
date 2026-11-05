@@ -861,3 +861,23 @@ mod tests {
         println!("sent {} fee {} txid {}", sent.amount_sats, sent.fee_sats, sent.txid);
     }
 }
+
+#[cfg(test)]
+mod find_address {
+    /// `SATURN_FIND_SECRET=… SATURN_FIND_ADDR=sat1… cargo test --lib find_address -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn find_address() {
+        let (k, kind) = super::Keys::from_secret(&std::env::var("SATURN_FIND_SECRET").unwrap()).unwrap();
+        let want = std::env::var("SATURN_FIND_ADDR").unwrap();
+        for change in [false, true] {
+            for i in 0..50 {
+                if k.address(change, i).unwrap() == want {
+                    println!("FOUND {kind} {} index {i}", if change { "change" } else { "receive" });
+                    return;
+                }
+            }
+        }
+        println!("NOT FOUND in the first 50 receive/change addresses; first is {}", k.address(false, 0).unwrap());
+    }
+}
