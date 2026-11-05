@@ -48,8 +48,8 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const box = size === 'lg' ? 156 : 116
 
   const { path, clip, rimMask } = useMemo(() => {
-    const path = roundedHex(d, d * 0.13)
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}'><path d='${path}' fill='none' stroke='white' stroke-width='${size === 'lg' ? 6 : 5}'/></svg>`
+    const path = roundedHex(d, d * 0.14)
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}'><path d='${path}' fill='none' stroke='white' stroke-width='${size === 'lg' ? 4 : 3.5}'/></svg>`
     return { path, clip: `path('${path}')`, rimMask: `url("data:image/svg+xml,${encodeURIComponent(svg)}")` }
   }, [d, size])
 
@@ -58,11 +58,22 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const py = useMotionValue(22)
   const sx = useSpring(px, { stiffness: 160, damping: 20 })
   const sy = useSpring(py, { stiffness: 160, damping: 20 })
-  const sheen = useMotionTemplate`radial-gradient(55% 42% at ${sx}% ${sy}%, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.07) 55%, transparent 75%)`
+  const sheen = useMotionTemplate`radial-gradient(55% 42% at ${sx}% ${sy}%, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.04) 55%, transparent 75%)`
 
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative grid place-items-center" style={{ width: box, height: box }}>
+        {/* orbit: a fine dashed hex frame that turns slowly while mining */}
+        <motion.svg
+          viewBox="0 0 100 100"
+          className="absolute inset-0"
+          aria-hidden="true"
+          animate={{ rotate: active ? 360 : 0 }}
+          transition={active ? { duration: 24, repeat: Infinity, ease: 'linear' } : { duration: 0.9, ease: 'easeOut' }}
+        >
+          <polygon points="50,3 90.7,26.5 90.7,73.5 50,97 9.3,73.5 9.3,26.5" fill="none" stroke="white" strokeOpacity={active ? 0.22 : 0.12} strokeWidth="0.5" strokeDasharray="1 3" />
+        </motion.svg>
+
         {/* colour bleeding out around the glass while mining */}
         <AnimatePresence>
           {lit && (
@@ -79,8 +90,6 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           )}
         </AnimatePresence>
 
-        {/* soft shadow under the glass */}
-        <span aria-hidden="true" className="absolute bg-black/60 blur-[10px]" style={{ width: d, height: d, clipPath: clip, transform: 'translateY(7px) scale(0.96)' }} />
 
         <motion.button
           type="button"
@@ -97,9 +106,9 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           disabled={busy}
           aria-pressed={active}
           aria-label={LABELS[status]}
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.03 }}
           // squish like a drop of liquid
-          whileTap={{ scaleX: 1.09, scaleY: 0.91 }}
+          whileTap={{ scaleX: 1.05, scaleY: 0.95 }}
           transition={{ type: 'spring', stiffness: 520, damping: 14, mass: 0.7 }}
           className="group relative z-10 grid place-items-center outline-none disabled:cursor-wait"
           style={{
@@ -114,7 +123,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           <span
             aria-hidden="true"
             className="absolute inset-0 transition-opacity duration-700"
-            style={{ background: 'radial-gradient(circle at 50% 115%, rgb(70 70 78 / 0.55), rgb(14 14 18 / 0.82) 62%)', opacity: lit ? 0.35 : 1 }}
+            style={{ background: 'linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02)), rgb(18 18 22 / 0.55)', opacity: lit ? 0.3 : 1 }}
           />
 
           {/* liquid colour swimming inside, only while mining */}
@@ -134,7 +143,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           {/* the spectrum rim: a faint whisper when off, full colour when mining */}
           <span
             aria-hidden="true"
-            className={cn('spectrum-fill absolute inset-0 transition-opacity duration-700', lit ? 'opacity-100' : 'opacity-30 group-hover:opacity-55')}
+            className={cn('spectrum-fill absolute inset-0 transition-opacity duration-700', lit ? 'opacity-90' : 'opacity-20 group-hover:opacity-40')}
             data-speed={active ? undefined : 'slow'}
             style={{ WebkitMaskImage: rimMask, maskImage: rimMask }}
           />
@@ -143,28 +152,27 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
             <defs>
               <linearGradient id={`lg-edge-${size}`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="white" stopOpacity="0.85" />
-                <stop offset="0.35" stopColor="white" stopOpacity="0.12" />
-                <stop offset="0.65" stopColor="white" stopOpacity="0.06" />
-                <stop offset="1" stopColor="white" stopOpacity="0.5" />
+                <stop offset="0" stopColor="white" stopOpacity="0.7" />
+                <stop offset="0.4" stopColor="white" stopOpacity="0.22" />
+                <stop offset="0.7" stopColor="white" stopOpacity="0.14" />
+                <stop offset="1" stopColor="white" stopOpacity="0.4" />
               </linearGradient>
               <linearGradient id={`lg-pool-${size}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0.55" stopColor="white" stopOpacity="0" />
-                <stop offset="1" stopColor="white" stopOpacity="0.14" />
+                <stop offset="0.6" stopColor="white" stopOpacity="0" />
+                <stop offset="1" stopColor="white" stopOpacity="0.06" />
               </linearGradient>
             </defs>
             {/* light pooling in the bottom of the glass */}
             <path d={path} fill={`url(#lg-pool-${size})`} />
-            <path d={path} fill="none" stroke={`url(#lg-edge-${size})`} strokeWidth="2.4" />
+            <path d={path} fill="none" stroke={`url(#lg-edge-${size})`} strokeWidth="1.6" />
           </svg>
 
           {/* specular highlight, following the pointer */}
           <motion.span aria-hidden="true" className="pointer-events-none absolute inset-0 mix-blend-overlay" style={{ background: sheen }} />
-          <span aria-hidden="true" className="pointer-events-none absolute left-[24%] right-[24%] top-[7%] h-[18%] rounded-[50%] bg-gradient-to-b from-white/25 to-white/0 blur-[1px]" />
 
           <Power
-            className={cn('relative transition-all duration-500', size === 'lg' ? 'size-9' : 'size-7', lit ? 'text-white drop-shadow-[0_0_10px_rgb(255_255_255/0.8)]' : 'text-white/80 drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] group-hover:text-white')}
-            strokeWidth={2.4}
+            className={cn('relative transition-all duration-500', size === 'lg' ? 'size-9' : 'size-7', lit ? 'text-white drop-shadow-[0_0_6px_rgb(255_255_255/0.45)]' : 'text-white/75 group-hover:text-white/95')}
+            strokeWidth={2}
             aria-hidden="true"
           />
         </motion.button>
