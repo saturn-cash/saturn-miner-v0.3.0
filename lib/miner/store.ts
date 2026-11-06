@@ -37,6 +37,8 @@ let state: MinerState = loadSettings(createInitialState())
 const listeners = new Set<Listener>()
 let timer: ReturnType<typeof setInterval> | null = null
 let telemetryInFlight = false
+/** Bumped on every start/stop, so a telemetry reply that left before it can't undo it. */
+let controlGen = 0
 
 function emit() {
   for (const l of listeners) l()
@@ -224,8 +226,11 @@ async function tickNode() {
 async function tickTauri() {
   if (telemetryInFlight) return
   telemetryInFlight = true
+  const gen = controlGen
   try {
     const t = await invokeCommand<Telemetry>(TAURI_COMMANDS.telemetry, { since: lastLogId })
+    // started or stopped while this was in flight: its status is stale, the next tick will be right
+    if (gen !== controlGen) t.status = state.status === 'stopping' ? 'stopping' : (state.status as Telemetry['status'])
     update((s) => {
       const incoming = t.log ?? []
       if (incoming.length) lastLogId = incoming[incoming.length - 1].id
@@ -317,6 +322,7 @@ export const minerActions = {
       update((s) => ({ ...s, log: [...s.log, makeLog('error', 'MINER', 'Enter your sat1 payout address on the Mining screen first. Shares are paid to that address.')] }))
       return
     }
+    controlGen++
     update((s) => ({ ...s, status: 'starting', log: [...s.log, makeLog('info', 'MINER', 'Spinning up SHA-256d workers…')] }))
     if (nativeMiner) {
       try {
@@ -328,12 +334,18 @@ export const minerActions = {
     }
   },
   async stop() {
-    if (state.status !== 'mining') return
-    update((s) => ({ ...s, status: 'stopping', log: [...s.log, makeLog('info', 'MINER', 'Stop requested — draining work queue…')] }))
+    // stopping works while it's still starting too (waiting on the pool, or a node that's syncing)
+    if (state.status !== 'mining' && state.status !== 'starting') return
+    const cancel = state.status === 'starting'
+    controlGen++
+    update((s) => ({ ...s, status: 'stopping', log: [...s.log, makeLog('info', 'MINER', cancel ? 'Start cancelled' : 'Stop requested — draining work queue…')] }))
     if (nativeMiner) {
       try {
         await invokeCommand(TAURI_COMMANDS.stop)
+      } catch (err) {
+        update((s) => ({ ...s, log: [...s.log, makeLog('error', 'MINER', `Stop: ${String(err)}`)] }))
       } finally {
+        controlGen++
         update((s) => ({ ...s, status: 'idle' }))
       }
     }

@@ -109,12 +109,12 @@ function MiningStatus() {
         </div>
         <button
           type="button"
-          disabled={busy}
-          onClick={() => (mining ? minerActions.stop() : minerActions.start())}
-          aria-label={mining ? 'Stop mining' : 'Start mining'}
+          disabled={status === 'stopping'}
+          onClick={() => (mining || status === 'starting' ? minerActions.stop() : minerActions.start())}
+          aria-label={mining ? 'Stop mining' : status === 'starting' ? 'Cancel start' : 'Start mining'}
           className="grid size-7 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/[0.16] disabled:opacity-40"
         >
-          {mining ? <Square className="size-3 fill-current" aria-hidden="true" /> : <Play className="ml-0.5 size-3.5 fill-current" aria-hidden="true" />}
+          {mining || status === 'starting' ? <Square className="size-3 fill-current" aria-hidden="true" /> : <Play className="ml-0.5 size-3.5 fill-current" aria-hidden="true" />}
         </button>
       </div>
     </div>

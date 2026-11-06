@@ -70,11 +70,11 @@ export function Topbar({ screen, platform = 'web' }: { screen: ScreenId; platfor
           type="button"
           className="mac-button"
           data-variant={mining ? undefined : 'primary'}
-          disabled={busy}
-          onClick={() => (mining ? minerActions.stop() : minerActions.start())}
+          disabled={status === 'stopping'}
+          onClick={() => (mining || status === 'starting' ? minerActions.stop() : minerActions.start())}
         >
-          {mining ? <Square className="size-3 fill-current" aria-hidden="true" /> : <Play className="size-3 fill-current" aria-hidden="true" />}
-          {mining ? 'Stop' : 'Start Mining'}
+          {mining || status === 'starting' ? <Square className="size-3 fill-current" aria-hidden="true" /> : <Play className="size-3 fill-current" aria-hidden="true" />}
+          {mining ? 'Stop' : status === 'starting' ? 'Cancel' : 'Start Mining'}
         </button>
         {platform === 'desktop' && <WindowControls />}
       </div>

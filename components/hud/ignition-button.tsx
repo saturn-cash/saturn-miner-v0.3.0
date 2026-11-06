@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 const LABELS = {
   idle: 'Start Mining',
-  starting: 'Starting…',
+  starting: 'Starting… tap to cancel',
   mining: 'Stop Mining',
   stopping: 'Stopping…',
 } as const
@@ -102,7 +102,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
 
         <motion.button
           type="button"
-          onClick={() => (active ? minerActions.stop() : minerActions.start())}
+          onClick={() => (active || status === 'starting' ? minerActions.stop() : minerActions.start())}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
             px.set(((e.clientX - r.left) / r.width) * 100)
@@ -112,9 +112,9 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
             px.set(36)
             py.set(22)
           }}
-          disabled={busy}
+          disabled={status === 'stopping'}
           aria-pressed={active}
-          aria-label={LABELS[status]}
+          aria-label={status === 'starting' ? 'Cancel start' : LABELS[status]}
           whileHover={{ scale: 1.03 }}
           // squish like a drop of liquid
           whileTap={{ scaleX: 1.05, scaleY: 0.95 }}
