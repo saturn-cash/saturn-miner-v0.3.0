@@ -116,8 +116,7 @@ export function createInitialState(): MinerState {
     },
     settings: {
       animations: true,
-      // quiet until you switch it on in Settings
-      sound: false,
+      sound: true,
       font: 'oxanium',
       volume: 0.6,
       fpsCap: 60,
@@ -129,6 +128,7 @@ export function createInitialState(): MinerState {
       ecoOnBattery: true,
       runNode: false,
       shareSound: true,
+      atmosphere: false,
       celebration: true,
       realSaturn: true,
     },

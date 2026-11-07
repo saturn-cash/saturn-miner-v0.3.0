@@ -39,9 +39,10 @@ const FAR = new Set<ScreenId>(['wallet', 'network', 'activity', 'hardware'])
 function useSoundSettings() {
   const enabled = useMiner((s) => s.settings.sound)
   const volume = useMiner((s) => s.settings.volume)
+  const atmosphere = useMiner((s) => s.settings.atmosphere)
   useEffect(() => {
-    sound.configure({ enabled, volume })
-  }, [enabled, volume])
+    sound.configure({ enabled, volume, atmosphere })
+  }, [enabled, volume, atmosphere])
   useEffect(() => {
     // browsers only start audio after a gesture; the first click or key press unlocks it
     const unlock = () => sound.unlock()

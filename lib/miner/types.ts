@@ -66,6 +66,8 @@ export interface Settings {
   runNode: boolean
   /** a ping for every accepted share (only when sound is on) */
   shareSound: boolean
+  /** Saturn atmosphere: the low drone, engine hum and solar wind that play while you mine (off by default) */
+  atmosphere: boolean
   /** the full-screen supernova when you find a block */
   celebration: boolean
   /** real Cassini photos of Saturn behind the app instead of the 3D model */

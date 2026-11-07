@@ -4,6 +4,7 @@
  * Saturn's soundscape, synthesized live with WebAudio — no audio files to ship.
  *
  *   drone   two detuned low sines + filtered "solar wind" noise; opens up as hashrate climbs
+ *           (the "Saturn atmosphere" switch; off unless you turn it on)
  *   warp    a noise whoosh swept through a band-pass, with a sub-bass sweep under it
  *   ignite  a rising reactor tone and a thump; powerDown is the reverse
  *   share   a short bright ping, like a struck glass bar
@@ -20,6 +21,8 @@ type Nodes = {
   droneFilter: BiquadFilterNode
   engineGain: GainNode
   windGain: GainNode
+  /** the drone, engine hum and solar wind all run through this; the "Saturn atmosphere" switch opens it */
+  ambience: GainNode
   echo: GainNode
   noise: AudioBuffer
 }
@@ -30,6 +33,7 @@ const PING_NOTES = [1318.5, 1568, 1760, 2093]
 class SoundEngine {
   private n: Nodes | null = null
   private enabled = true
+  private atmosphere = false
   private volume = 0.6
   private energy = 0
   private lastShare = 0
@@ -42,10 +46,13 @@ class SoundEngine {
     this.applyMaster(0.8)
   }
 
-  configure({ enabled, volume }: { enabled: boolean; volume: number }) {
+  configure({ enabled, volume, atmosphere = false }: { enabled: boolean; volume: number; atmosphere?: boolean }) {
     this.enabled = enabled
     this.volume = volume
+    this.atmosphere = atmosphere
     this.applyMaster(0.4)
+    const n = this.n
+    if (n) n.ambience.gain.setTargetAtTime(atmosphere ? 1 : 0, n.ctx.currentTime, 0.6)
   }
 
   setEnergy(e: number) {
@@ -336,9 +343,12 @@ class SoundEngine {
     droneFilter.type = 'lowpass'
     droneFilter.frequency.value = 260
     droneFilter.Q.value = 2
+    const ambience = ctx.createGain()
+    ambience.gain.value = this.atmosphere ? 1 : 0
+    ambience.connect(master)
     const droneGain = ctx.createGain()
     droneGain.gain.value = 0.22
-    droneFilter.connect(droneGain).connect(master)
+    droneFilter.connect(droneGain).connect(ambience)
     for (const [f, type, amp] of [
       [55, 'sine', 0.6],
       [82.6, 'sine', 0.35],
@@ -388,10 +398,10 @@ class SoundEngine {
     windLfoAmt.gain.value = 260
     windLfo.connect(windLfoAmt).connect(windBp.frequency)
     windLfo.start()
-    wind.connect(windBp).connect(windGain).connect(master)
+    wind.connect(windBp).connect(windGain).connect(ambience)
     wind.start()
 
-    this.n = { ctx, master, droneGain, droneFilter, engineGain, windGain, echo, noise }
+    this.n = { ctx, master, droneGain, droneFilter, engineGain, windGain, ambience, echo, noise }
     this.setEnergy(this.energy)
   }
 }

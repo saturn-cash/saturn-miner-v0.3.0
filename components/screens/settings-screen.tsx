@@ -15,8 +15,9 @@ type BoolKey = { [K in keyof Settings]: Settings[K] extends boolean ? K : never 
 const TOGGLES: Array<{ key: BoolKey; label: string; description: string }> = [
   { key: 'animations', label: 'Cinematic flight', description: 'Warp between destinations, comets for shares and the block-found supernova. Turn off to free up GPU time.' },
   { key: 'realSaturn', label: 'Real Saturn', description: 'Real photos of Saturn taken by NASA’s Cassini spacecraft behind every screen, with the stars and effects on top. Off shows the 3D model instead.' },
-  { key: 'sound', label: 'Sound', description: 'A space drone that rises with your hashrate, warp whooshes between destinations, a ping for shares and a bell for blocks. Also the speaker button at the top left.' },
+  { key: 'sound', label: 'Sound effects', description: 'Warp whooshes between destinations, a ping for shares and a bell for blocks. Also the speaker button at the top left.' },
   { key: 'shareSound', label: 'Share ping', description: 'A short ping every time the pool accepts one of your shares.' },
+  { key: 'atmosphere', label: 'Saturn atmosphere', description: 'A low space drone, the engine hum and Saturn’s solar wind, rising with your hashrate while you mine. Plays only when sound effects are on.' },
   { key: 'ecoOnBattery', label: 'Eco mode on battery', description: 'Halve intensity automatically when unplugged.' },
   { key: 'minimizeToTray', label: 'Keep mining when closed', description: 'Closing the window leaves the miner running in the menu bar or tray.' },
   { key: 'launchOnStartup', label: 'Open at login', description: 'Start Saturn when you log in.' },
