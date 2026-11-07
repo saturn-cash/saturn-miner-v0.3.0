@@ -69,7 +69,7 @@ export function BootSequence({ onDone, cinematic }: { onDone: () => void; cinema
                 animate={{ opacity: 1, scale: 1, filter: 'drop-shadow(0 0 28px rgb(245 185 113 / 0.35))' }}
                 transition={{ duration: 1, delay: ENTER, ease: [0.16, 1, 0.3, 1] }}
               >
-                <SaturnLogo className="size-24" />
+                <SaturnLogo className="h-11 w-auto" />
               </motion.div>
             </div>
             <motion.h1
