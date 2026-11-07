@@ -116,8 +116,13 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
             WebkitBackdropFilter: 'blur(6px) saturate(1.4)',
           }}
         >
-          {/* clear smoked glass */}
-          <span aria-hidden="true" className="absolute inset-0 transition-colors duration-500" style={{ background: lit ? 'rgb(14 16 24 / 0.38)' : 'rgb(18 22 30 / 0.34)' }} />
+          {/* off: light brushed silver glass; mining: clear smoked glass so the lamps glow through */}
+          <span aria-hidden="true" className="absolute inset-0" style={{ background: 'rgb(14 16 24 / 0.38)' }} />
+          <span
+            aria-hidden="true"
+            className={cn('absolute inset-0 transition-opacity duration-700', lit ? 'opacity-0' : 'opacity-100')}
+            style={{ background: 'linear-gradient(180deg, rgb(244 246 250 / 0.86) 0%, rgb(222 226 234 / 0.80) 50%, rgb(196 201 212 / 0.80) 100%)' }}
+          />
 
           {/* liquid colour swimming under the lamps, only while mining */}
           <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-60' : busy ? 'opacity-30' : 'opacity-0')}>
@@ -137,8 +142,10 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
                     height: s * 0.5,
                     left: -s * 0.25,
                     top: -s * 0.25,
-                    background: 'radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.4), rgb(150 154 170 / 0.22) 45%, rgb(0 0 0 / 0.35) 100%)',
-                    boxShadow: 'inset 0 0 0 0.5px rgb(255 255 255 / 0.22), 0 0 2px rgb(0 0 0 / 0.5)',
+                    background: lit
+                      ? 'radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.4), rgb(150 154 170 / 0.22) 45%, rgb(0 0 0 / 0.35) 100%)'
+                      : 'radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.95), rgb(178 183 196) 50%, rgb(120 126 140) 100%)',
+                    boxShadow: lit ? 'inset 0 0 0 0.5px rgb(255 255 255 / 0.22), 0 0 2px rgb(0 0 0 / 0.5)' : 'inset 0 -0.5px 0.5px rgb(0 0 0 / 0.25), 0 0.5px 0 rgb(255 255 255 / 0.8)',
                   }}
                 />
                 {/* its light: the wrapper fades it in and out, the inner one flickers */}
@@ -204,7 +211,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
             className={cn(
               'relative transition-all duration-500',
               size === 'lg' ? 'size-9' : 'size-7',
-              lit ? 'text-white drop-shadow-[0_0_8px_rgb(255_220_160/0.7)]' : 'text-white/85 drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)] group-hover:text-white',
+              lit ? 'text-white drop-shadow-[0_0_8px_rgb(255_220_160/0.7)]' : 'text-[rgb(74_79_92)] drop-shadow-[0_1px_0_rgb(255_255_255/0.85)] group-hover:text-[rgb(40_90_150)]',
             )}
             strokeWidth={2.2}
             aria-hidden="true"
