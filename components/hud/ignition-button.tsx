@@ -15,12 +15,12 @@ const LABELS = {
 
 /** Little lamps behind the frosted glass that light up while mining (position %, size px, flicker timing, colour). */
 const LAMPS = [
-  { x: 30, y: 30, s: 30, t: 4.2, d: 0, c: 'rgb(188 130 243 / 0.75)' },
-  { x: 70, y: 30, s: 26, t: 5.1, d: 1.3, c: 'rgb(141 159 255 / 0.75)' },
-  { x: 50, y: 74, s: 32, t: 4.7, d: 0.6, c: 'rgb(255 103 120 / 0.7)' },
-  { x: 22, y: 60, s: 22, t: 3.8, d: 2.1, c: 'rgb(245 185 234 / 0.75)' },
-  { x: 78, y: 62, s: 24, t: 4.4, d: 0.9, c: 'rgb(255 186 113 / 0.75)' },
-  { x: 50, y: 20, s: 18, t: 5.6, d: 1.8, c: 'rgb(198 134 255 / 0.75)' },
+  { x: 30, y: 30, s: 38, t: 4.2, d: 0, c: 'rgb(178 110 255)' },
+  { x: 70, y: 30, s: 34, t: 5.1, d: 1.3, c: 'rgb(110 140 255)' },
+  { x: 50, y: 74, s: 40, t: 4.7, d: 0.6, c: 'rgb(255 80 104)' },
+  { x: 22, y: 60, s: 30, t: 3.8, d: 2.1, c: 'rgb(255 140 220)' },
+  { x: 78, y: 62, s: 32, t: 4.4, d: 0.9, c: 'rgb(255 170 70)' },
+  { x: 50, y: 20, s: 26, t: 5.6, d: 1.8, c: 'rgb(190 110 255)' },
 ]
 
 /** A hexagon (Saturn's north-pole storm) with softly rounded corners, as an SVG path in pixels. */
@@ -92,7 +92,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
               className="spectrum-fill absolute rounded-full blur-[26px]"
               style={{ width: d * 1.12, height: d * 1.12, animation: 'spectrum-turn 5s linear infinite, spectrum-breathe 3.2s ease-in-out infinite' }}
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.9 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8 }}
             />
@@ -131,11 +131,11 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           {/* Milk glass, like an old indicator lamp: a thin frosted white diffuser over little lamps.
               Off, the lamps are dark and it is plain white glass. Mining, the lamps light up in colour
               and glow through the frost, with liquid colour swimming behind them. */}
-          <span aria-hidden="true" className="absolute inset-0 transition-colors duration-700" style={{ background: lit ? 'rgb(18 18 22 / 0.22)' : 'rgb(236 238 244 / 0.30)' }} />
+          <span aria-hidden="true" className="absolute inset-0 transition-colors duration-700" style={{ background: lit ? 'rgb(255 255 255 / 0.10)' : 'rgb(236 238 244 / 0.30)' }} />
 
           {/* liquid colour swimming behind the frost, only while mining */}
           <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-0')}>
-            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.55, animation: 'radar-spin 7s linear infinite' }} />
+            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.85, animation: 'radar-spin 7s linear infinite' }} />
           </span>
 
           {/* the lamps behind the diffuser: dark when off, glowing when mining */}
@@ -151,8 +151,8 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
                   height: l.s,
                   marginLeft: -l.s / 2,
                   marginTop: -l.s / 2,
-                  background: `radial-gradient(circle, rgb(255 255 255 / 0.95), ${l.c} 35%, transparent 70%)`,
-                  filter: 'blur(4px)',
+                  background: `radial-gradient(circle, rgb(255 255 255), ${l.c} 30%, transparent 72%)`,
+                  filter: 'blur(3px) saturate(1.3)',
                   animation: `lamp-flicker ${l.t}s ease-in-out ${l.d}s infinite`,
                 }}
               />
@@ -170,7 +170,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
                   : 'radial-gradient(circle at 50% 38%, rgb(255 255 255 / 0.92), rgb(244 245 250 / 0.80) 72%), linear-gradient(180deg, rgb(255 255 255 / 0.30), rgb(228 230 238 / 0.18))',
               backdropFilter: 'blur(5px)',
               WebkitBackdropFilter: 'blur(5px)',
-              opacity: lit ? 0.5 : 1,
+              opacity: lit ? 0.28 : 1,
             }}
           />
           {/* fine frosting grain */}
