@@ -116,7 +116,8 @@ export function createInitialState(): MinerState {
     },
     settings: {
       animations: true,
-      sound: true,
+      // quiet until you switch it on in Settings
+      sound: false,
       font: 'oxanium',
       volume: 0.6,
       fpsCap: 60,

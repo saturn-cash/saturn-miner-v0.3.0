@@ -19,6 +19,11 @@ function loadSettings(s: MinerState): MinerState {
     if (!saved) return s
     // early builds defaulted to Bitcoin's RPC port; Saturn Core listens on 9998
     if (saved.rpcUrl === 'http://127.0.0.1:8332') saved.rpcUrl = 'http://127.0.0.1:9998'
+    // 0.8.3: sound became opt-in, so everyone starts quiet once; after that their choice sticks
+    if (!saved.soundOptIn) {
+      saved.sound = false
+      saved.soundOptIn = true
+    }
     return { ...s, settings: { ...s.settings, ...saved } }
   } catch {
     return s
