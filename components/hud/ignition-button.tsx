@@ -142,7 +142,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
                   }}
                 />
                 {/* its light: the wrapper fades it in and out, the inner one flickers */}
-                <span className={cn('absolute transition-opacity duration-1000', active ? 'opacity-100' : busy ? 'opacity-40' : 'opacity-0')} style={{ left: 0, top: 0 }}>
+                <span className={cn('absolute transition-opacity duration-1000', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-[0.28] group-hover:opacity-40')} style={{ left: 0, top: 0 }}>
                   <span
                     className="absolute rounded-full"
                     style={{
@@ -186,11 +186,11 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
             }}
           />
 
-          {/* a glint that slides across the gloss on hover */}
-          <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
+          {/* a glint that slides across the whole glass on hover */}
+          <span aria-hidden="true" className="absolute inset-0 overflow-hidden">
             <span
-              className="absolute inset-y-0 w-[38%] -left-[60%] transition-[left] duration-700 ease-out group-hover:left-[125%]"
-              style={{ background: 'linear-gradient(100deg, transparent, rgb(255 255 255 / 0.5), transparent)' }}
+              className="absolute -inset-y-[20%] w-[42%] -left-[70%] rotate-[18deg] transition-[left] duration-700 ease-out group-hover:left-[130%]"
+              style={{ background: 'linear-gradient(90deg, transparent, rgb(255 255 255 / 0.18) 30%, rgb(255 255 255 / 0.55) 50%, rgb(255 255 255 / 0.18) 70%, transparent)' }}
             />
           </span>
 

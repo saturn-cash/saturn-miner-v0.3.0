@@ -10,38 +10,48 @@ import { cosmosImpulse, type DestinationId } from '@/lib/cosmos/store'
  * domain, NASA/JPL-Caltech/Space Science Institute), upscaled 4x, with the life of the old 3D scene
  * painted onto them live:
  *
- *   - every screen is a viewpoint on the same portrait of Saturn (PIA06193); flying between screens
- *     glides and pulls back across it, never cuts
+ *   - every screen is a viewpoint on "The Day the Earth Smiled" (PIA17172): Saturn backlit by the
+ *     Sun, the whole ring system lit up; flying between screens glides and pulls back across it
  *   - ring particles orbit and glint along the real rings (inner ones faster, like real orbits)
  *   - the rings warm up with your hashrate, an aurora wakes over the north pole, the lit limb glows
  *   - every accepted share sends a bright wave out through the rings
- *   - the cloud bands drift ever so slightly; a soft sun flare sits off to the right
- *   - finding a block (and the arrival after launch) turns to "The Day the Earth Smiled" (PIA17172):
- *     Saturn backlit by the Sun, the whole ring system ablaze
+ *   - the haze of the outer rings breathes with your hashrate; a soft sun flare sits off to the right
+ *   - finding a block (and the arrival after launch) sets the rings and the lit rim ablaze
  * The live stars, comets, warp streaks and supernova of the 3D scene play around all of it; space in
  * the photos is see-through and the planet hides the stars behind it.
  */
 
 type PhotoInfo = { src: string; hi: string; px: [number, number]; body: [number, number, number, number] }
 
-const PORTRAIT: PhotoInfo = {
-  src: '/saturn/cassini-portrait.jpg',
-  hi: '/saturn/cassini-portrait-4x.jpg',
-  px: [1920, 981],
-  // planet disc in image coordinates (centre x, y from the top, radius x, radius y)
-  body: [0.495, 0.505, 0.18, 0.352],
-}
 const ECLIPSE: PhotoInfo = {
   src: '/saturn/cassini-eclipse.jpg',
   hi: '/saturn/cassini-eclipse-4x.jpg',
   px: [1920, 800],
-  body: [0.511, 0.541, 0.098, 0.235],
+  // planet disc in image coordinates (centre x, y from the top, radius x, radius y)
+  body: [0.513, 0.54, 0.099, 0.219],
 }
+// the main rings: an ellipse fitted to the photo (pixels of the 1920 x 800 original)
+const RING = { cx: 985, cy: 425, a: 442, b: 135 }
 
 /** Put image point (ix, iy) at screen point (sx, sy) (both from the top-left), the photo `h` screens tall. */
 type Frame = { ix: number; iy: number; sx: number; sy: number; h: number }
 
-const FRAMES: Record<DestinationId, Frame> = {
+/*
+ * The viewpoints were composed on the old portrait photo; carry each one over to the same spot on the
+ * eclipse photo's rings (ring-relative position, and the same ring size on screen).
+ */
+const OLD_RING = { cx: 949 / 1920, cy: 481 / 981, a: 778 / 1920, b: 200 / 981, aspect: 1920 / 981 }
+const NEW_RING = { cx: RING.cx / 1920, cy: RING.cy / 800, a: RING.a / 1920, b: RING.b / 800, aspect: 1920 / 800 }
+const ZOOM = (OLD_RING.a * OLD_RING.aspect) / (NEW_RING.a * NEW_RING.aspect)
+const carry = (f: Frame): Frame => ({
+  ix: NEW_RING.cx + ((f.ix - OLD_RING.cx) * NEW_RING.a) / OLD_RING.a,
+  iy: NEW_RING.cy + ((f.iy - OLD_RING.cy) * NEW_RING.b) / OLD_RING.b,
+  sx: f.sx,
+  sy: f.sy,
+  h: f.h * ZOOM,
+})
+
+const PORTRAIT_FRAMES: Record<DestinationId, Frame> = {
   launch: { ix: 0.495, iy: 0.49, sx: 0.6, sy: 0.5, h: 0.75 },
   overview: { ix: 0.495, iy: 0.5, sx: 0.71, sy: 0.43, h: 1.0 },
   mining: { ix: 0.74, iy: 0.5, sx: 0.72, sy: 0.48, h: 2.4 },
@@ -52,6 +62,13 @@ const FRAMES: Record<DestinationId, Frame> = {
   diagnostics: { ix: 0.56, iy: 0.22, sx: 0.7, sy: 0.42, h: 2.2 },
   settings: { ix: 0.36, iy: 0.46, sx: 0.7, sy: 0.5, h: 1.45 },
 }
+const FRAMES = Object.fromEntries(Object.entries(PORTRAIT_FRAMES).map(([k, f]) => [k, carry(f)])) as Record<DestinationId, Frame>
+// the whole-planet views pull back a little further, so the blue halo of the outer rings shows too
+Object.assign(FRAMES, {
+  launch: { ix: 0.513, iy: 0.53, sx: 0.6, sy: 0.48, h: 0.66 },
+  overview: { ix: 0.513, iy: 0.53, sx: 0.64, sy: 0.36, h: 0.7 },
+  network: { ix: 0.513, iy: 0.53, sx: 0.62, sy: 0.48, h: 0.64 },
+})
 
 const vertex = /* glsl */ `
 varying vec2 vUv;
@@ -62,13 +79,11 @@ void main() {
 `
 
 const fragment = /* glsl */ `
-uniform sampler2D uPortrait;
 uniform sampler2D uEclipse;
-uniform vec4 uFrame;     // ix, iy, sx, sy (portrait)
+uniform vec4 uFrame;     // ix, iy, sx, sy
 uniform float uH;        // photo height in screens
-uniform vec4 uBodyP;
-uniform vec4 uBodyE;
-uniform float uEclipseMix;
+uniform vec4 uBody;
+uniform float uBlaze;    // 0..1: just found a block, or just arrived after launch
 uniform vec2 uRes;
 uniform vec2 uPointer;
 uniform float uTime;
@@ -85,41 +100,45 @@ float noise(vec2 p) {
 }
 float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
-// where a screen point lands on a photo, for a framing; outside 0..1 means off the photo
+// where a screen point lands on the photo, for a framing; outside 0..1 means off the photo
 vec2 toImage(vec2 uv, vec4 frame, float h, float aspect) {
   float sa = uRes.x / uRes.y;
   vec2 d = uv - frame.zw;
   return frame.xy + vec2(d.x * sa / aspect, d.y) / h;
 }
 float edgeFade(vec2 iuv) {
-  return smoothstep(0.0, 0.04, iuv.x) * smoothstep(0.0, 0.04, 1.0 - iuv.x) * smoothstep(0.0, 0.04, iuv.y) * smoothstep(0.0, 0.04, 1.0 - iuv.y);
+  return smoothstep(0.0, 0.06, iuv.x) * smoothstep(0.0, 0.06, 1.0 - iuv.x) * smoothstep(0.0, 0.06, iuv.y) * smoothstep(0.0, 0.06, 1.0 - iuv.y);
 }
 
-// the portrait, alive
-vec4 portrait(vec2 uv) {
-  vec2 iuv = toImage(uv, uFrame, uH, ${(PORTRAIT.px[0] / PORTRAIT.px[1]).toFixed(5)});
+// Saturn backlit by the Sun, alive
+vec4 world(vec2 uv) {
+  vec2 iuv = toImage(uv, uFrame, uH, ${(ECLIPSE.px[0] / ECLIPSE.px[1]).toFixed(5)});
   if (iuv.x < 0.0 || iuv.x > 1.0 || iuv.y < 0.0 || iuv.y > 1.0) return vec4(0.0);
-  vec2 bq = (iuv - uBodyP.xy) / uBodyP.zw;
+  vec2 bq = (iuv - uBody.xy) / uBody.zw;
   float br = length(bq);
   float onBody = 1.0 - smoothstep(0.97, 1.0, br);
-  // the cloud bands drift: a tiny flowing shear inside the disc
+  // the night side's faint cloud bands drift: a tiny flowing shear inside the disc
   vec2 s = iuv;
-  s.x += onBody * 0.0011 * sin(iuv.y * 70.0 + uTime * 0.12) * (1.0 - br * br);
-  vec3 c = texture2D(uPortrait, vec2(s.x, 1.0 - s.y)).rgb;
+  s.x += onBody * 0.0007 * sin(iuv.y * 90.0 + uTime * 0.12) * (1.0 - br * br);
+  vec3 c = texture2D(uEclipse, vec2(s.x, 1.0 - s.y)).rgb;
   float edge = edgeFade(iuv);
   c *= edge;
 
-  // ring coordinates: an ellipse fitted to the real rings (pixels of the original photo)
-  vec2 q = iuv * vec2(${PORTRAIT.px[0]}.0, ${PORTRAIT.px[1]}.0) - vec2(949.0, 481.0);
-  vec2 e = q / vec2(778.0, 200.0);
+  // ring coordinates: the ellipse fitted to the real rings
+  vec2 q = iuv * vec2(${ECLIPSE.px[0]}.0, ${ECLIPSE.px[1]}.0) - vec2(${RING.cx}.0, ${RING.cy}.0);
+  vec2 e = q / vec2(${RING.a}.0, ${RING.b}.0);
   float rr = length(e);
   float th = atan(e.y, e.x);
-  float zone = smoothstep(0.53, 0.57, rr) * (1.0 - smoothstep(0.985, 1.01, rr));
+  float zone = smoothstep(0.44, 0.48, rr) * (1.0 - smoothstep(0.985, 1.01, rr));
   zone *= 1.0 - onBody * step(q.y, 0.0); // the far half of the rings is behind the planet
   float ringVis = zone * smoothstep(0.06, 0.28, lum(c));
+  // the blue haze of the faint outer rings (E and G), well outside the main ones
+  float haze = smoothstep(1.05, 1.25, rr) * (1.0 - smoothstep(1.6, 2.1, rr)) * (1.0 - onBody);
 
-  // hashrate warms the rings
+  // hashrate warms the rings and makes the outer haze breathe
   c += c * ringVis * uEnergy * vec3(0.32, 0.24, 0.12);
+  float breath = 0.5 + 0.5 * sin(uTime * 0.35 - rr * 3.0);
+  c += c * haze * (0.06 + 0.22 * uEnergy) * breath * vec3(0.8, 0.9, 1.15);
 
   // spokes: broad, faint patterns that sweep around the rings, inner ones faster (Kepler)
   float kep = 0.045 * pow(max(rr, 0.5), -1.5);
@@ -127,7 +146,7 @@ vec4 portrait(vec2 uv) {
   c += c * ringVis * (spokes - 0.25) * (0.22 + 0.25 * uEnergy);
 
   // glints: ring particles catching the sunlight, a brief flash each, more of them as you hash
-  vec2 gq = q / 5.0;
+  vec2 gq = q / 3.0;
   vec2 cellId = floor(gq);
   float hcell = hash(cellId);
   float phase = fract(uTime * (0.25 + hcell * 0.5) + hcell * 7.31);
@@ -137,44 +156,33 @@ vec4 portrait(vec2 uv) {
   float glint = step(0.955 - uEnergy * 0.03, hcell) * flashOn * shape;
   c += vec3(1.0, 0.95, 0.84) * glint * ringVis * (0.6 + 0.8 * uEnergy);
 
-  // a share sends a bright wave out through the rings
-  float wr = 0.55 + uPulseAge * 0.55;
-  float wave = exp(-pow((rr - wr) / 0.025, 2.0)) * max(0.0, 1.0 - uPulseAge / 0.85);
-  c += vec3(1.0, 0.82, 0.5) * wave * ringVis * 0.75;
+  // a share sends a bright wave out through the rings and on into the haze
+  float wr = 0.48 + uPulseAge * 0.75;
+  float wave = exp(-pow((rr - wr) / 0.03, 2.0)) * max(0.0, 1.0 - uPulseAge / 1.1);
+  c += vec3(1.0, 0.82, 0.5) * wave * ringVis * 0.75 + vec3(0.6, 0.75, 1.0) * wave * haze * 0.12;
+
+  // a block (or the arrival after launch): the rings and the outer haze flare up
+  c += c * (ringVis * 0.9 + haze * 0.7) * uBlaze * (0.85 + 0.15 * sin(uTime * 2.0 + rr * 9.0));
 
   // aurora over the north pole, waking with the hashrate
-  vec2 pole = (iuv - vec2(uBodyP.x + 0.012, uBodyP.y - uBodyP.w * 0.97)) * vec2(${PORTRAIT.px[0]}.0, ${PORTRAIT.px[1]}.0) / 345.0;
+  vec2 pole = (iuv - vec2(uBody.x, uBody.y - uBody.w * 0.97)) * vec2(${ECLIPSE.px[0]}.0, ${ECLIPSE.px[1]}.0) / 190.0;
   float curtain = noise(vec2(pole.x * 6.0 + uTime * 0.25, uTime * 0.15)) * noise(vec2(pole.x * 13.0 - uTime * 0.4, 1.7));
   float aur = exp(-pole.x * pole.x * 3.5) * exp(-pow((pole.y + 0.08) / 0.07, 2.0)) * (0.35 + curtain * 1.4);
   vec3 aurora = mix(vec3(0.15, 1.0, 0.55), vec3(0.35, 0.6, 1.0), smoothstep(-0.2, 0.2, pole.x)) * aur * (0.08 + uEnergy * 0.55 + uFlash * 0.6);
 
-  // the sunlit limb glows a little, more with energy
-  float limb = smoothstep(1.05, 0.995, br) * smoothstep(0.9, 0.995, br) * smoothstep(-0.2, 0.6, bq.x);
-  vec3 glow = vec3(1.0, 0.86, 0.62) * limb * (0.06 + 0.16 * uEnergy);
+  // the sunlit rim glows all the way round (the Sun is right behind the planet), more with energy
+  float limb = smoothstep(1.05, 0.995, br) * smoothstep(0.9, 0.995, br) * (0.75 + 0.25 * smoothstep(-0.6, 0.6, -bq.y));
+  vec3 glow = vec3(1.0, 0.9, 0.72) * limb * (0.08 + 0.18 * uEnergy + 0.5 * uBlaze);
 
   float a = max(smoothstep(0.025, 0.11, lum(c)), onBody * edge);
   return vec4(c + (aurora + glow) * edge, a);
 }
 
-vec4 eclipse(vec2 uv) {
-  // framed around the planet, a little larger than the portrait's view
-  vec4 f = vec4(${ECLIPSE.body[0]}, ${ECLIPSE.body[1]}, uFrame.z, uFrame.w);
-  vec2 iuv = toImage(uv, f, uH * 1.5, ${(ECLIPSE.px[0] / ECLIPSE.px[1]).toFixed(5)});
-  if (iuv.x < 0.0 || iuv.x > 1.0 || iuv.y < 0.0 || iuv.y > 1.0) return vec4(0.0);
-  vec3 c = texture2D(uEclipse, vec2(iuv.x, 1.0 - iuv.y)).rgb * edgeFade(iuv);
-  // the backlit rings shimmer
-  c *= 1.0 + 0.12 * sin(uTime * 2.0 + length((iuv - uBodyE.xy) / uBodyE.zw) * 9.0);
-  float inBody = 1.0 - smoothstep(0.97, 1.0, length((iuv - uBodyE.xy) / uBodyE.zw));
-  return vec4(c, max(smoothstep(0.025, 0.11, lum(c)), inBody * edgeFade(iuv)));
-}
-
 void main() {
   vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
-  vec4 p = portrait(uv);
-  vec4 c = p;
-  if (uEclipseMix > 0.0) c = mix(p, eclipse(uv), uEclipseMix);
+  vec4 c = world(uv);
 
-  // a soft sun flare off to the right, where the light comes from
+  // a soft sun flare off to the right
   float sa = uRes.x / uRes.y;
   vec2 fp = vec2(1.02, 0.16) + uPointer * vec2(-0.03, -0.02);
   vec2 d = (uv - fp) * vec2(sa, 1.0);
@@ -221,19 +229,17 @@ export function PhotoBackdrop({ pulseKey, flash, energy }: { pulseKey: number; f
   const textures = useMemo(() => {
     // 7680-pixel textures need a GPU that takes 8192; older ones keep the 1920 originals
     const hi = gl.capabilities.maxTextureSize >= 8192
-    return { portrait: loadTexture(PORTRAIT, hi, invalidate), eclipse: loadTexture(ECLIPSE, hi, invalidate) }
+    return { eclipse: loadTexture(ECLIPSE, hi, invalidate) }
   }, [gl, invalidate])
   useEffect(() => () => Object.values(textures).forEach((t) => t.dispose()), [textures])
 
   const uniforms = useMemo(
     () => ({
-      uPortrait: { value: textures.portrait },
       uEclipse: { value: textures.eclipse },
       uFrame: { value: new THREE.Vector4() },
       uH: { value: 1 },
-      uBodyP: { value: new THREE.Vector4(...PORTRAIT.body) },
-      uBodyE: { value: new THREE.Vector4(...ECLIPSE.body) },
-      uEclipseMix: { value: 1 },
+      uBody: { value: new THREE.Vector4(...ECLIPSE.body) },
+      uBlaze: { value: 1 },
       uRes: { value: new THREE.Vector2(1, 1) },
       uPointer: { value: new THREE.Vector2() },
       uTime: { value: 0 },
@@ -294,11 +300,11 @@ export function PhotoBackdrop({ pulseKey, flash, energy }: { pulseKey: number; f
     uniforms.uH.value = f.h * breathe
     uniforms.uPointer.value.set(p.sx, p.sy)
 
-    // the backlit eclipse: during launch, and for a while after you find a block
+    // the rings ablaze: during launch, and for a while after you find a block
     const since = cosmosImpulse.supernovaAt < 0 ? 1e9 : (performance.now() - cosmosImpulse.supernovaAt) / 1000
     const block = smooth(0, 0.8, since) * (1 - smooth(6, 8, since))
     const launch = a.dest === 'launch' ? 1 : a.arrivedAt < 0 ? 1 : 1 - smooth(0, 2.2, t - a.arrivedAt)
-    uniforms.uEclipseMix.value = Math.max(block, launch)
+    uniforms.uBlaze.value = Math.max(block, launch)
 
     uniforms.uRes.value.set(size.width, size.height)
     uniforms.uTime.value = t
