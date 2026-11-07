@@ -89,8 +89,8 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
             <motion.span
               key="glow"
               aria-hidden="true"
-              className="spectrum-fill absolute rounded-full blur-[26px]"
-              style={{ width: d * 1.12, height: d * 1.12, animation: 'spectrum-turn 5s linear infinite, spectrum-breathe 3.2s ease-in-out infinite' }}
+              className="spectrum-fill absolute rounded-full blur-[34px]"
+              style={{ width: d * 1.4, height: d * 1.4, animation: 'spectrum-turn 5s linear infinite, spectrum-breathe 3.2s ease-in-out infinite' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -135,7 +135,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
 
           {/* liquid colour swimming behind the frost, only while mining */}
           <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-0')}>
-            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.85, animation: 'radar-spin 7s linear infinite' }} />
+            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 1, animation: 'radar-spin 7s linear infinite' }} />
           </span>
 
           {/* the lamps behind the diffuser: dark when off, glowing when mining */}
@@ -147,10 +147,11 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
                 style={{
                   left: `${l.x}%`,
                   top: `${l.y}%`,
-                  width: l.s,
-                  height: l.s,
-                  marginLeft: -l.s / 2,
-                  marginTop: -l.s / 2,
+                  width: l.s * 1.35,
+                  height: l.s * 1.35,
+                  marginLeft: (-l.s * 1.35) / 2,
+                  marginTop: (-l.s * 1.35) / 2,
+                  mixBlendMode: 'screen',
                   background: `radial-gradient(circle, rgb(255 255 255), ${l.c} 30%, transparent 72%)`,
                   filter: 'blur(3px) saturate(1.3)',
                   animation: `lamp-flicker ${l.t}s ease-in-out ${l.d}s infinite`,
@@ -170,7 +171,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
                   : 'radial-gradient(circle at 50% 38%, rgb(255 255 255 / 0.92), rgb(244 245 250 / 0.80) 72%), linear-gradient(180deg, rgb(255 255 255 / 0.30), rgb(228 230 238 / 0.18))',
               backdropFilter: 'blur(5px)',
               WebkitBackdropFilter: 'blur(5px)',
-              opacity: lit ? 0.28 : 1,
+              opacity: lit ? 0.16 : 1,
             }}
           />
           {/* fine frosting grain */}
@@ -186,7 +187,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           {/* the spectrum rim: a faint whisper when off, full colour when mining */}
           <span
             aria-hidden="true"
-            className={cn('spectrum-fill absolute inset-0 transition-opacity duration-700', lit ? 'opacity-90' : 'opacity-20 group-hover:opacity-40')}
+            className={cn('spectrum-fill absolute inset-0 transition-opacity duration-700', lit ? 'opacity-100' : 'opacity-20 group-hover:opacity-40')}
             data-speed={active ? undefined : 'slow'}
             style={{ WebkitMaskImage: rimMask, maskImage: rimMask }}
           />
