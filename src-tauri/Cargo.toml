@@ -1,6 +1,6 @@
 [package]
 name = "saturn-miner"
-version = "0.8.5"
+version = "0.8.6"
 description = "Saturn Miner: desktop miner and Bitaxe controller for Saturn Core"
 edition = "2021"
 rust-version = "1.77"
