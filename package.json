@@ -1,6 +1,6 @@
 {
   "name": "saturn-miner",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "private": true,
   "packageManager": "pnpm@12.3.4",
   "scripts": {

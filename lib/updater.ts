@@ -34,6 +34,8 @@ export const updater = {
       const r = await invokeCommand<{ available: boolean; version?: string; notes?: string; current: string }>('update_check')
       set({ phase: r.available ? 'available' : 'current', version: r.version, notes: r.notes, current: r.current, checkedAt: Date.now(), dismissed: quiet ? state.dismissed : false })
     } catch (e) {
+      // no update published yet (the first signed release comes after this one): that's "up to date"
+      if (/404|not found|valid release json|status code/i.test(String(e))) return set({ phase: 'current', checkedAt: Date.now() })
       // offline, or GitHub unreachable: stay quiet on the automatic checks
       set({ phase: quiet ? 'idle' : 'error', error: String(e), checkedAt: Date.now() })
     }
