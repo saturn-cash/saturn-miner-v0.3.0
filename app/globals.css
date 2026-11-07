@@ -343,3 +343,11 @@
   45% { opacity: 1; }
   60% { opacity: 0.8; }
 }
+
+/* the hologram power button's glow (ignition-button.tsx) */
+.coin-glow {
+  filter: drop-shadow(0 0 2px rgb(61 255 139 / 0.7)) drop-shadow(0 0 8px rgb(61 255 139 / 0.25));
+}
+.coin-glow-on {
+  filter: drop-shadow(0 0 3px rgb(61 255 139 / 0.95)) drop-shadow(0 0 14px rgb(61 255 139 / 0.5));
+}
