@@ -56,6 +56,9 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const d = size === 'lg' ? 116 : 86
   const box = size === 'lg' ? 156 : 116
 
+  // the chrome bezel around the glass, like an old casino button
+  const bezel = d + 16
+  const bezelPath = useMemo(() => roundedHex(bezel, bezel * 0.15), [bezel])
   const { path, clip, rimMask } = useMemo(() => {
     const path = roundedHex(d, d * 0.14)
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}'><path d='${path}' fill='none' stroke='white' stroke-width='${size === 'lg' ? 4 : 3.5}'/></svg>`
@@ -99,6 +102,22 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           )}
         </AnimatePresence>
 
+
+        {/* chrome bezel: polished metal ring with a dark seat for the glass */}
+        <svg aria-hidden="true" className="pointer-events-none absolute" width={bezel} height={bezel} viewBox={`0 0 ${bezel} ${bezel}`} style={{ filter: 'drop-shadow(0 8px 14px rgb(0 0 0 / 0.55))' }}>
+          <defs>
+            <linearGradient id={`chrome-${size}`} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#f6f8fb" />
+              <stop offset="0.22" stopColor="#9aa0ab" />
+              <stop offset="0.4" stopColor="#eef1f5" />
+              <stop offset="0.58" stopColor="#636976" />
+              <stop offset="0.78" stopColor="#dfe3ea" />
+              <stop offset="1" stopColor="#7d838f" />
+            </linearGradient>
+          </defs>
+          <path d={bezelPath} fill="#121418" stroke={`url(#chrome-${size})`} strokeWidth={size === 'lg' ? 6 : 5} />
+          <path d={bezelPath} fill="none" stroke="black" strokeOpacity="0.45" strokeWidth="0.75" />
+        </svg>
 
         <motion.button
           type="button"
@@ -173,6 +192,12 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
               WebkitBackdropFilter: 'blur(5px)',
               opacity: lit ? 0.16 : 1,
             }}
+          />
+          {/* the glossy dome: a bright curved reflection across the top, like a casino button's plastic cap */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute rounded-[50%]"
+            style={{ left: '17%', right: '17%', top: '6%', height: '36%', background: 'linear-gradient(180deg, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.12) 70%, rgb(255 255 255 / 0))' }}
           />
           {/* fine frosting grain */}
           <span
