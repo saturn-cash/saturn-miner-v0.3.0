@@ -89,6 +89,8 @@ const GLITCHES: Record<CoinStyle, [number, number][]> = {
 /** hologram: a 3D Saturn facing you; cursor: the website cursor's flat Saturn, spinning the same way */
 export type CoinStyle = 'hologram' | 'cursor';
 
+/** line weight multiplier for the current draw (thicker lines at small sizes) */
+let WT = 1;
 let off: HTMLCanvasElement | null = null;
 let tint: HTMLCanvasElement | null = null;
 
@@ -99,7 +101,7 @@ function drawPlanet(o: CanvasRenderingContext2D, cx: number, cy: number, s: numb
 	o.scale(s, s);
 	const stroke = (alpha: number, width: number) => {
 		o.strokeStyle = `rgba(${G},${alpha})`;
-		o.lineWidth = width;
+		o.lineWidth = width * WT;
 		o.stroke();
 	};
 	// rings: the far half is behind the planet, so dimmer
@@ -167,7 +169,7 @@ function drawCursorPlanet(o: CanvasRenderingContext2D, cx: number, cy: number, s
 	o.scale(s, s);
 	const stroke = (alpha: number, width: number) => {
 		o.strokeStyle = `rgba(${G},${alpha})`;
-		o.lineWidth = width;
+		o.lineWidth = width * WT;
 		o.stroke();
 	};
 	o.setLineDash([2, 3.5]);
@@ -229,6 +231,8 @@ export type CoinOptions = {
 	beam?: boolean;
 	/** 0..1: how bright the projection is (the power button dims it when off) */
 	energy?: number;
+	/** line weight multiplier, for drawing it small (a header icon) */
+	weight?: number;
 	/** time (s) for the scanlines, sweep and flicker, if they should keep moving while the coin holds still */
 	fxT?: number;
 	glitches?: boolean;
@@ -239,7 +243,8 @@ export type CoinOptions = {
  * on at every whole COIN_PERIOD.
  */
 export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, opts: CoinOptions | CoinStyle = {}) {
-	const { style = 'hologram', beam: withBeam = true, energy = 1, fxT = t, glitches = true } = typeof opts === 'string' ? { style: opts } : opts;
+	const { style = 'hologram', beam: withBeam = true, energy = 1, fxT = t, glitches = false, weight = 1 } = typeof opts === 'string' ? { style: opts } : opts;
+	WT = weight;
 	const main = ctx.canvas;
 	const dpr = main.width / w;
 	if (!off || off.width !== main.width || off.height !== main.height) {
@@ -276,12 +281,12 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	o.beginPath();
 	o.ellipse(cx, ey, 15 * k, 3.4 * k, 0, 0, TAU);
 	o.strokeStyle = `rgba(${G},.95)`;
-	o.lineWidth = 1.3 * k;
+	o.lineWidth = 1.3 * k * WT;
 	o.stroke();
 	o.beginPath();
 	o.ellipse(cx, ey, 7 * k, 1.6 * k, 0, 0, TAU);
 	o.strokeStyle = `rgba(${G},.55)`;
-	o.lineWidth = 0.8 * k;
+	o.lineWidth = 0.8 * k * WT;
 	o.stroke();
 	// the beam, widening up towards the coin
 	const top = cy + 30 * k;
@@ -335,11 +340,11 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	};
 	poly(far);
 	o.strokeStyle = `rgba(${G},.13)`;
-	o.lineWidth = 0.9 * k;
+	o.lineWidth = 0.9 * k * WT;
 	o.stroke();
 	poly(hull([...front, ...back]));
 	o.strokeStyle = `rgba(${G},.4)`;
-	o.lineWidth = 1 * k;
+	o.lineWidth = 1 * k * WT;
 	o.stroke();
 	o.beginPath();
 	for (const r of ridges) {
@@ -350,13 +355,13 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 		o.lineTo(b[0], b[1]);
 	}
 	o.strokeStyle = `rgba(${G},.38)`;
-	o.lineWidth = 0.6 * k;
+	o.lineWidth = 0.6 * k * WT;
 	o.stroke();
 	poly(face);
 	o.fillStyle = `rgba(${G},.045)`;
 	o.fill();
 	o.strokeStyle = `rgb(${G})`;
-	o.lineWidth = 1.7 * k;
+	o.lineWidth = 1.7 * k * WT;
 	o.stroke();
 
 	if (style === 'cursor') drawCursorPlanet(o, cx, cy, k * 0.6, loop * TAU * 1.5);
@@ -388,7 +393,8 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	tc.fillRect(0, 0, tint!.width, tint!.height);
 
 	const glitch = glitches ? GLITCHES[style].find(([a, b]) => loop >= a && loop < b) : undefined;
-	const flicker = (0.93 + 0.04 * Math.sin(fx * TAU * 9) + 0.03 * Math.sin(fx * TAU * 31 + 1)) * (0.42 + 0.58 * Math.max(0, Math.min(1, energy)));
+	// a steady projection: just the faintest shimmer
+	const flicker = (0.97 + 0.03 * Math.sin(fx * TAU * 3)) * (0.42 + 0.58 * Math.max(0, Math.min(1, energy)));
 	ctx.save();
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
 	ctx.clearRect(0, 0, main.width, main.height);

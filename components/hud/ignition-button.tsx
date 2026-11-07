@@ -67,7 +67,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
       }
       const eT = st === 'idle' && state.current.hover ? 0.7 : ENERGY[st]
       e += (eT - e) * Math.min(1, dt * 5)
-      drawCoin(ctx, w, p * COIN_PERIOD, { style: 'cursor', energy: e, fxT: now / 1000, glitches: st === 'mining' })
+      drawCoin(ctx, w, p * COIN_PERIOD, { style: 'cursor', energy: e, fxT: now / 1000, glitches: false })
       const moving = v > 0 || target > 0 || Math.abs(eT - e) > 0.01
       // while mining the scanlines keep scrolling; otherwise stop drawing once everything has settled
       raf = moving && !document.hidden ? requestAnimationFrame(frame) : 0
