@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS 15+ asks before an app may reach devices on your home network; without this text it
+       silently blocks Saturn from your Bitaxe instead of asking -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Saturn talks to your Bitaxe miners on your home network to show their stats and point them at the Saturn pool.</string>
+</dict>
+</plist>

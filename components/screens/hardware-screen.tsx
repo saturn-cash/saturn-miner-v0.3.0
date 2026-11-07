@@ -359,26 +359,60 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
   )
 }
 
+/** Plain-English reason a Bitaxe isn't answering, from the desktop shell's error code. */
+function reachProblem(error: string | undefined, host: string) {
+  const code = (error ?? '').split(':')[0]
+  switch (code) {
+    case 'timeout':
+      return `Nothing answered at ${host}. It may be off, restarting, or on a different address now.`
+    case 'refused':
+      return `Something at ${host} answered but it isn't AxeOS. Your Bitaxe probably has a new address.`
+    case 'blocked':
+      return 'Your computer is blocking Saturn from your home network. On a Mac: System Settings → Privacy & Security → Local Network → turn on Saturn.'
+    case 'unreachable':
+      return `Your computer can't reach ${host}. Check you're on the same Wi-Fi as the Bitaxe and not on a VPN or guest network.`
+    default:
+      return `Check that it's powered on and on the same network, then retry.`
+  }
+}
+
 function OfflineState({ device }: { device: Device }) {
   const browserNote = !isTauri() && !device.demo
+  const restarting = device.status === 'connecting' && !!device.graceUntil && Date.now() < device.graceUntil
+  const [showDetail, setShowDetail] = useState(false)
   return (
     <div className="flex flex-col items-start gap-3 py-2">
       <p className="flex items-center gap-2 text-[14px]">
-        {device.status === 'connecting' ? <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" /> : <StatusDot tone="red" />}
-        {device.status === 'connecting' ? `Connecting to ${device.host}…` : `Can't reach ${device.host}`}
+        {device.status === 'connecting' || device.searching ? <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" /> : <StatusDot tone="red" />}
+        {device.searching
+          ? `Looking for ${device.name ?? 'your Bitaxe'} on your network…`
+          : restarting
+            ? `${device.name ?? 'Bitaxe'} is restarting…`
+            : device.status === 'connecting'
+              ? `Connecting to ${device.host}…`
+              : `Can't reach ${device.host}`}
       </p>
-      {device.status === 'offline' && (
+      {device.status === 'offline' && !device.searching && (
         <p className="max-w-[60ch] text-[13px] leading-relaxed text-muted-foreground">
           {browserNote
             ? 'The browser preview can’t talk to devices on your network. Open Saturn as the desktop app to control real Bitaxes, or add the demo device to try the controls.'
-            : `Check that it's powered on and on the same network, then retry. ${device.error ? `(${device.error})` : ''}`}
+            : reachProblem(device.error, device.host)}
+          {!browserNote && (device.mac || device.name) ? ' Saturn keeps looking for it by itself, and follows it if its address changes.' : ''}
         </p>
       )}
-      {device.status === 'offline' && (
-        <button type="button" onClick={() => fleet.refresh(device.id)} className="mac-button">
-          Retry
-        </button>
+      {device.status === 'offline' && !device.searching && (
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => fleet.refresh(device.id)} className="mac-button">
+            {device.mac || device.name ? 'Find it' : 'Retry'}
+          </button>
+          {device.error && !browserNote && (
+            <button type="button" className="text-[12px] text-muted-foreground underline-offset-2 hover:underline" onClick={() => setShowDetail((v) => !v)}>
+              {showDetail ? 'Hide details' : 'Details'}
+            </button>
+          )}
+        </div>
       )}
+      {showDetail && device.error && <code className="max-w-full break-all text-[11px] text-muted-foreground">{device.error}</code>}
     </div>
   )
 }

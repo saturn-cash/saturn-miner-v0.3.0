@@ -33,8 +33,40 @@ fn allowed_host(host: &str) -> bool {
     valid_chars && (name.ends_with(".local") || !name.contains('.'))
 }
 
+/// HTTP client for LAN devices. `no_proxy`: a system or VPN proxy (which reqwest picks up from the
+/// environment and, on Windows, the registry) can't reach a Bitaxe on your home network.
 fn client(timeout: Duration) -> Result<reqwest::Client, String> {
-    reqwest::Client::builder().timeout(timeout).build().map_err(|e| e.to_string())
+    reqwest::Client::builder()
+        .no_proxy()
+        .connect_timeout(Duration::from_secs(4))
+        .timeout(timeout)
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+/// What actually went wrong talking to a device, in words, with a short code the app can act on
+/// ("timeout: ...", "refused: ...", "blocked: ...", "unreachable: ...").
+fn describe(e: &reqwest::Error) -> String {
+    let mut chain = e.to_string();
+    let mut src: Option<&dyn std::error::Error> = std::error::Error::source(e);
+    while let Some(s) = src {
+        chain.push_str(" / ");
+        chain.push_str(&s.to_string());
+        src = s.source();
+    }
+    let low = chain.to_ascii_lowercase();
+    let code = if e.is_timeout() || low.contains("timed out") {
+        "timeout"
+    } else if low.contains("refused") {
+        "refused"
+    } else if low.contains("permission denied") || low.contains("os error 65") || low.contains("not permitted") {
+        "blocked"
+    } else if low.contains("unreachable") || low.contains("no route") || low.contains("os error 10065") || low.contains("os error 10051") {
+        "unreachable"
+    } else {
+        "failed"
+    };
+    format!("{code}: {chain}")
 }
 
 #[tauri::command]
@@ -51,13 +83,13 @@ pub async fn bitaxe_request(host: String, method: String, path: String, body: Op
         "PATCH" => reqwest::Method::PATCH,
         other => return Err(format!("Unsupported method {other}")),
     };
-    let mut req = client(Duration::from_secs(5))?.request(method, format!("http://{host}{path}"));
+    let mut req = client(Duration::from_secs(8))?.request(method, format!("http://{host}{path}"));
     if let Some(body) = body.filter(|b| !b.is_null()) {
         req = req.json(&body);
     }
-    let res = req.send().await.map_err(|e| e.to_string())?;
+    let res = req.send().await.map_err(|e| describe(&e))?;
     let status = res.status();
-    let text = res.text().await.map_err(|e| e.to_string())?;
+    let text = res.text().await.map_err(|e| describe(&e))?;
     if !status.is_success() {
         return Err(format!("{} {}", status.as_u16(), text.trim()));
     }
@@ -87,16 +119,20 @@ pub struct ScanResult {
     found: Vec<String>,
     /// AxeOS hostname for each found device, same order
     names: Vec<String>,
+    /// MAC address for each found device, same order ("" if the firmware doesn't say), so the app
+    /// can follow a known Bitaxe to a new IP
+    macs: Vec<String>,
     /// networks that were searched, e.g. "192.168.50.x"
     networks: Vec<String>,
 }
 
-async fn probe(http: &reqwest::Client, host: String) -> Option<(String, String)> {
+async fn probe(http: &reqwest::Client, host: String) -> Option<(String, String, String)> {
     let info: Value = http.get(format!("http://{host}/api/system/info")).send().await.ok()?.json().await.ok()?;
     // every AxeOS build reports its ASIC model; older/newer ones may use either key
     if info.get("ASICModel").is_some() || info.get("asicModel").is_some() || info.get("axeOSVersion").is_some() {
         let name = info.get("hostname").and_then(|h| h.as_str()).unwrap_or("bitaxe").to_string();
-        Some((host, name))
+        let mac = info.get("macAddr").and_then(|m| m.as_str()).unwrap_or("").to_ascii_lowercase();
+        Some((host, name, mac))
     } else {
         None
     }
@@ -139,6 +175,7 @@ pub async fn bitaxe_scan(hosts: Option<Vec<String>>) -> Result<ScanResult, Strin
     }
 
     let http = reqwest::Client::builder()
+        .no_proxy()
         .connect_timeout(Duration::from_millis(700))
         .timeout(Duration::from_millis(1500))
         .build()
@@ -150,7 +187,7 @@ pub async fn bitaxe_scan(hosts: Option<Vec<String>>) -> Result<ScanResult, Strin
             targets.push(format!("{a}.{b}.{c}.{d}"));
         }
     }
-    let mut hits: Vec<(String, String)> = stream::iter(targets)
+    let mut hits: Vec<(String, String, String)> = stream::iter(targets)
         .map(|host| {
             let http = http.clone();
             async move { probe(&http, host).await }
@@ -160,12 +197,13 @@ pub async fn bitaxe_scan(hosts: Option<Vec<String>>) -> Result<ScanResult, Strin
         .collect()
         .await;
     // a device found both by hostname and by IP is listed once, by IP
-    let by_ip: Vec<String> = hits.iter().filter(|(h, _)| h.parse::<Ipv4Addr>().is_ok()).map(|(_, n)| n.clone()).collect();
-    hits.retain(|(h, n)| h.parse::<Ipv4Addr>().is_ok() || !by_ip.contains(n));
-    hits.sort_by_key(|(h, _)| h.parse::<Ipv4Addr>().map(u32::from).unwrap_or(0));
+    let by_ip: Vec<String> = hits.iter().filter(|(h, _, _)| h.parse::<Ipv4Addr>().is_ok()).map(|(_, n, _)| n.clone()).collect();
+    hits.retain(|(h, n, _)| h.parse::<Ipv4Addr>().is_ok() || !by_ip.contains(n));
+    hits.sort_by_key(|(h, _, _)| h.parse::<Ipv4Addr>().map(u32::from).unwrap_or(0));
     Ok(ScanResult {
-        found: hits.iter().map(|(h, _)| h.clone()).collect(),
-        names: hits.into_iter().map(|(_, n)| n).collect(),
+        found: hits.iter().map(|(h, _, _)| h.clone()).collect(),
+        names: hits.iter().map(|(_, n, _)| n.clone()).collect(),
+        macs: hits.into_iter().map(|(_, _, m)| m).collect(),
         networks: subnets.iter().map(|[a, b, c]| format!("{a}.{b}.{c}.x")).collect(),
     })
 }
@@ -197,5 +235,17 @@ mod scan_test {
         println!("{:?} {:?} {:?} in {:?}", r.found, r.names, r.networks, t.elapsed());
         assert_eq!(r.found, vec!["localhost:18555".to_string()]);
         assert_eq!(r.names, vec!["miner2".to_string()]);
+    }
+}
+
+#[cfg(test)]
+mod reach_test {
+    /// the error a user sees says what kind of failure it was
+    #[tokio::test]
+    async fn explains_failures() {
+        let http = super::client(std::time::Duration::from_secs(8)).unwrap();
+        let refused = super::describe(&http.get("http://127.0.0.1:9/api/system/info").send().await.unwrap_err());
+        println!("{refused}");
+        assert!(refused.starts_with("refused:"), "{refused}");
     }
 }

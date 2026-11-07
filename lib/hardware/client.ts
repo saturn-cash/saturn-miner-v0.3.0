@@ -50,9 +50,9 @@ export const bitaxe = {
   restart: (host: string) => request<unknown>(host, 'POST', '/api/system/restart'),
   identify: (host: string) => request<unknown>(host, 'POST', '/api/system/identify'),
   /** Searches every network the PC can reach; `hosts` are extra names to try (e.g. "miner2"). */
-  async scan(hosts: string[] = []): Promise<{ found: string[]; names: string[]; networks: string[] }> {
+  async scan(hosts: string[] = []): Promise<{ found: string[]; names: string[]; macs?: string[]; networks: string[] }> {
     if (!isTauri()) throw new Error('Network scan needs the desktop app')
-    return invokeCommand<{ found: string[]; names: string[]; networks: string[] }>('bitaxe_scan', { hosts })
+    return invokeCommand<{ found: string[]; names: string[]; macs?: string[]; networks: string[] }>('bitaxe_scan', { hosts })
   },
 }
 

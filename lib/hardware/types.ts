@@ -66,6 +66,17 @@ export interface Device {
   demo?: boolean
   /** settings that only take effect after a restart */
   pendingRestart?: boolean
+  /** the Bitaxe's MAC address and hostname, remembered so it can be found again if its IP changes */
+  mac?: string
+  name?: string
+  /** polls in a row that failed */
+  missed?: number
+  /** looking for it on the network right now */
+  searching?: boolean
+  /** last time it was searched for (ms) */
+  lastSearch?: number
+  /** restarting: don't call it unreachable before this time (ms) */
+  graceUntil?: number
 }
 
 export interface PoolSettings {
