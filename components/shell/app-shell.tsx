@@ -16,6 +16,7 @@ import { OverviewScreen } from '../screens/overview-screen'
 import { SettingsScreen } from '../screens/settings-screen'
 import { WalletScreen } from '../screens/wallet-screen'
 import { BootSequence } from './boot-sequence'
+import { UpdateBanner } from './update-banner'
 import type { ScreenId } from './destinations'
 import { Sidebar } from './sidebar'
 import { TabBar } from './tab-bar'
@@ -89,6 +90,7 @@ export default function AppShell() {
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_72%_42%,transparent_28%,rgb(0_0_0/0.5)_100%)]" />
 
       <BootSequence onDone={finishBoot} cinematic={cinematic} />
+      {booted && <UpdateBanner />}
 
       <div className="relative z-10 flex h-dvh">
         <Sidebar active={screen} onSelect={go} platform={platform} />

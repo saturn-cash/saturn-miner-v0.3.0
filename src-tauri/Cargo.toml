@@ -29,6 +29,7 @@ tar = "0.4"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 base64 = "0.22"
 tokio = { version = "1", features = ["time"] }
+tauri-plugin-updater = "2"
 
 # the recovery phrase is kept in the OS keychain where there is one (Keychain on macOS, Credential
 # Manager on Windows); Linux keeps it in a file only this user can read

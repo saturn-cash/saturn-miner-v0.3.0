@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch'
 import { minerActions, useMiner } from '@/lib/miner/store'
 import type { Settings } from '@/lib/miner/types'
 import { cn } from '@/lib/utils'
+import { updater, useUpdate } from '@/lib/updater'
 import { Panel } from '../hud/panel'
 import { LocalNodePanel } from '../node/local-node-panel'
 
@@ -136,7 +137,41 @@ export function SettingsScreen() {
           </div>
         </dl>
       </Panel>
+      <UpdatesPanel />
       </div>
     </div>
+  )
+}
+
+/** The app's version, and a manual check for a newer one (it also checks by itself). */
+function UpdatesPanel() {
+  const u = useUpdate()
+  if (!updater.supported()) return null
+  const status =
+    u.phase === 'checking' ? 'Checking…'
+    : u.phase === 'available' ? `Saturn ${u.version} is ready to install`
+    : u.phase === 'installing' ? `Installing Saturn ${u.version}…`
+    : u.phase === 'current' ? 'You have the latest version'
+    : u.phase === 'error' ? 'Couldn’t reach the update server. Check your internet and try again.'
+    : 'Saturn checks for updates by itself a few seconds after it opens.'
+  return (
+    <Panel title="Updates">
+      <div className="flex items-center justify-between gap-6">
+        <div>
+          <p className="t-body">Saturn {u.current ?? ''}</p>
+          <p className={cn('t-subhead mt-0.5', u.phase === 'available' ? 'text-primary' : u.phase === 'error' ? 'text-warn' : 'secondary')}>{status}</p>
+          <p className="t-subhead secondary mt-1">Updates install in place and keep your wallet, settings and node data.</p>
+        </div>
+        {u.phase === 'available' ? (
+          <button type="button" data-variant="primary" className="mac-button shrink-0" onClick={() => updater.install()}>
+            Update and restart
+          </button>
+        ) : (
+          <button type="button" className="mac-button shrink-0" disabled={u.phase === 'checking' || u.phase === 'installing'} onClick={() => updater.check()}>
+            Check for updates
+          </button>
+        )}
+      </div>
+    </Panel>
   )
 }
