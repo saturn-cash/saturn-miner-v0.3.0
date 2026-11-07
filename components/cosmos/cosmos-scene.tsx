@@ -54,6 +54,8 @@ export interface CosmosSceneProps {
   pulseKey: number;
   animate: boolean;
   fpsCap: number;
+  /** mining (or starting): full frame rate and the glow pass */
+  busy?: boolean;
   /** real Cassini photos instead of the 3D Saturn and moons */
   photo?: boolean;
 }
@@ -180,12 +182,23 @@ const fxFlash = {
 
 /* ------------------------------------------------------------------ */
 
+/*
+ * How often the scene redraws. Full speed (the frame-rate setting) only while mining or flying
+ * between screens; idle it drops to 20 fps, and to 6 fps while the window isn't in front, so the
+ * app stays light on the computer (and the glass panels, which re-blur the scene on every frame,
+ * cost far less).
+ */
+const IDLE_FPS = 20;
+const BACKGROUND_FPS = 6;
+
 function FrameDriver({
   animate,
   fpsCap,
+  busy,
 }: {
   animate: boolean;
   fpsCap: number;
+  busy: boolean;
 }) {
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
@@ -193,10 +206,13 @@ function FrameDriver({
     let raf = 0;
     let last = 0;
     let lastDest = cosmosImpulse.destination;
-    const interval = 1000 / fpsCap;
+    let flyingUntil = 0;
     const loop = (t: number) => {
       raf = requestAnimationFrame(loop);
       if (document.hidden) return;
+      if (cosmosImpulse.destination !== lastDest) flyingUntil = t + 3500;
+      const fps = !document.hasFocus() ? BACKGROUND_FPS : busy || t < flyingUntil || cosmosImpulse.launching ? fpsCap : Math.min(fpsCap, IDLE_FPS);
+      const interval = 1000 / fps;
       if (!animate) {
         // static mode: only redraw when the destination changes
         if (cosmosImpulse.destination !== lastDest) {
@@ -205,13 +221,14 @@ function FrameDriver({
         }
         return;
       }
+      lastDest = cosmosImpulse.destination;
       if (t - last < interval - 1) return;
       last = t;
       invalidate();
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [animate, fpsCap, invalidate]);
+  }, [animate, fpsCap, busy, invalidate]);
   return null;
 }
 
@@ -1297,11 +1314,12 @@ export default function CosmosScene({
   animate,
   fpsCap,
   photo = false,
+  busy = false,
 }: CosmosSceneProps) {
   return (
     <Canvas
       frameloop="demand"
-      dpr={[1, 1.5]}
+      dpr={[1, 1.25]}
       camera={{
         position: STATIC_VIEWS.launch!.pos.toArray(),
         fov: 38,
@@ -1309,7 +1327,7 @@ export default function CosmosScene({
         far: 2000,
       }}
       gl={{
-        antialias: true,
+        antialias: false,
         alpha: false,
         powerPreference: "high-performance",
       }}
@@ -1320,9 +1338,10 @@ export default function CosmosScene({
       aria-hidden="true"
     >
       <color attach="background" args={["#020308"]} />
-      <FrameDriver animate={animate} fpsCap={fpsCap} />
+      <FrameDriver animate={animate} fpsCap={fpsCap} busy={busy} />
       <CameraRig animate={animate} />
-      {animate && <Bloom />}
+      {/* the glow pass is the heaviest part of a frame: only while mining */}
+      {animate && busy && <Bloom />}
       <ambientLight intensity={0.05} />
       <directionalLight
         position={SUN_WORLD.clone().multiplyScalar(30)}

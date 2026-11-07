@@ -63,7 +63,7 @@ export function CosmosView({ reducedMotion }: { reducedMotion: boolean }) {
 
   return (
     <div className="fixed inset-0 -z-0" aria-hidden="true">
-      <CosmosScene energy={energy} pulseKey={accepted + blocksFound * 1000} animate={animations && !reducedMotion} fpsCap={fpsCap} photo={realSaturn} />
+      <CosmosScene energy={energy} pulseKey={accepted + blocksFound * 1000} animate={animations && !reducedMotion} fpsCap={fpsCap} photo={realSaturn} busy={status === 'mining' || status === 'starting'} />
     </div>
   )
 }

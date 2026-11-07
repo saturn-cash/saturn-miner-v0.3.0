@@ -26,14 +26,14 @@ type PhotoInfo = { src: string; hi: string; px: [number, number]; body: [number,
 
 const PORTRAIT: PhotoInfo = {
   src: '/saturn/cassini-portrait.jpg',
-  hi: '/saturn/cassini-portrait-4x.jpg',
+  hi: '/saturn/cassini-portrait-2x.jpg',
   px: [1920, 981],
   // planet disc in image coordinates (centre x, y from the top, radius x, radius y)
   body: [0.495, 0.505, 0.18, 0.352],
 }
 const ECLIPSE: PhotoInfo = {
   src: '/saturn/cassini-eclipse.jpg',
-  hi: '/saturn/cassini-eclipse-4x.jpg',
+  hi: '/saturn/cassini-eclipse-2x.jpg',
   px: [1920, 800],
   body: [0.511, 0.541, 0.098, 0.235],
 }
@@ -219,8 +219,9 @@ export function PhotoBackdrop({ pulseKey, flash, energy }: { pulseKey: number; f
   const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
   const textures = useMemo(() => {
-    // 7680-pixel textures need a GPU that takes 8192; older ones keep the 1920 originals
-    const hi = gl.capabilities.maxTextureSize >= 8192
+    // the 3840-pixel versions (a quarter of the memory of the old 7680 ones, and still sharp at the
+    // zoom levels the screens use); GPUs that can't take 4096 keep the 1920 originals
+    const hi = gl.capabilities.maxTextureSize >= 4096
     return { portrait: loadTexture(PORTRAIT, hi, invalidate), eclipse: loadTexture(ECLIPSE, hi, invalidate) }
   }, [gl, invalidate])
   useEffect(() => () => Object.values(textures).forEach((t) => t.dispose()), [textures])
