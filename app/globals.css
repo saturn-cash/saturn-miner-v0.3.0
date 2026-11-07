@@ -352,3 +352,49 @@
 .coin-glow-on {
   filter: drop-shadow(0 0 3px rgb(61 255 139 / 0.95)) drop-shadow(0 0 14px rgb(61 255 139 / 0.5));
 }
+
+/* ------------------------------------------------------------------ */
+/* Green hologram look (power button, flight map, peers radar): glowing */
+/* green linework, faint scanlines and a soft band of light sweeping   */
+/* down. Transform-only animation, so it costs next to nothing.         */
+/* ------------------------------------------------------------------ */
+.holo-glow {
+  filter: drop-shadow(0 0 1.5px rgb(61 255 139 / 0.85)) drop-shadow(0 0 7px rgb(61 255 139 / 0.3));
+}
+.holo-text {
+  color: rgb(125 255 180);
+  text-shadow: 0 0 6px rgb(61 255 139 / 0.45);
+}
+.holo-scan {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.holo-scan::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background: repeating-linear-gradient(180deg, transparent 0 2px, rgb(0 0 0 / 0.2) 2px 3px);
+}
+.holo-scan::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgb(61 255 139 / 0.07), transparent);
+  animation: holo-sweep 5s linear infinite;
+}
+@keyframes holo-sweep {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(340%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-scan::before { animation: none; opacity: 0; }
+}

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { formatHashrate, formatInt, shortHash, timeAgo } from '@/lib/format'
 import { useMiner } from '@/lib/miner/store'
 import type { Peer } from '@/lib/miner/types'
+import { HoloSaturn } from '../hud/holo-saturn'
 import { cn } from '@/lib/utils'
 import { NodeNotice } from '../hud/node-notice'
 import { LocalNodePanel } from '../node/local-node-panel'
@@ -76,42 +77,61 @@ export function NetworkScreen() {
   )
 }
 
+/** Peers as blips on a green hologram radar, the outline Saturn in the middle (you), nearer = faster. */
 function Radar({ peers }: { peers: Peer[] }) {
   return (
     <div className="flex flex-col gap-5 sm:flex-row xl:flex-col 2xl:flex-row">
-      <div className="relative mx-auto aspect-square w-full max-w-[240px] shrink-0">
-        {[1, 0.72, 0.44].map((s) => (
-          <span key={s} aria-hidden="true" className="absolute rounded-full border border-accent/25" style={{ inset: `${((1 - s) / 2) * 100}%` }} />
-        ))}
-        <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px bg-accent/15" />
-        <span aria-hidden="true" className="absolute inset-y-0 left-1/2 w-px bg-accent/15" />
-        <div aria-hidden="true" className="absolute inset-0 rounded-full [animation:radar-spin_4s_linear_infinite]" style={{ background: 'conic-gradient(from 0deg, rgba(95, 227, 208, 0.35), transparent 25%)' }} />
+      <div className="holo-scan relative mx-auto aspect-square w-full max-w-[240px] shrink-0 rounded-full">
+        <div className="holo-glow absolute inset-0">
+          {[1, 0.72, 0.44].map((s, i) => (
+            <span
+              key={s}
+              aria-hidden="true"
+              className={cn('absolute rounded-full border', i === 0 ? 'border-[rgb(61_255_139/0.55)]' : 'border-dashed border-[rgb(61_255_139/0.28)]')}
+              style={{ inset: `${((1 - s) / 2) * 100}%` }}
+            />
+          ))}
+          <span aria-hidden="true" className="absolute inset-x-[4%] top-1/2 h-px bg-[rgb(61_255_139/0.18)]" />
+          <span aria-hidden="true" className="absolute inset-y-[4%] left-1/2 w-px bg-[rgb(61_255_139/0.18)]" />
+          {/* tick marks round the rim */}
+          {Array.from({ length: 24 }, (_, i) => (
+            <span key={i} aria-hidden="true" className="absolute left-1/2 top-0 h-[4%] w-px origin-[50%_1250%] bg-[rgb(61_255_139/0.45)]" style={{ transform: `translateX(-50%) rotate(${i * 15}deg)` }} />
+          ))}
+        </div>
+        <div aria-hidden="true" className="absolute inset-0 rounded-full [animation:radar-spin_4s_linear_infinite]" style={{ background: 'conic-gradient(from 0deg, rgb(61 255 139 / 0.32), transparent 22%)' }} />
         {peers.map((p, i) => {
           const angle = (i / peers.length) * Math.PI * 2 + i * 0.7
           const dist = 0.2 + Math.min(1, p.latency / 260) * 0.75
           return (
-            <motion.span
+            <span
               key={p.id}
-              className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]"
+              className="absolute -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${50 + Math.cos(angle) * dist * 46}%`, top: `${50 + Math.sin(angle) * dist * 46}%` }}
-              initial={{ scale: 0 }}
-              animate={{ scale: [1, 1.5, 1] }}
-              transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
               title={`${p.location} · ${p.latency}ms`}
-            />
+            >
+              <motion.span
+                aria-hidden="true"
+                className="absolute left-1/2 top-1/2 h-[10px] w-[26px] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-[rgb(61_255_139/0.8)]"
+                style={{ rotate: -20 }}
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: [0, 0.9, 0], scale: [0.4, 1, 1.8] }}
+                transition={{ duration: 2.2, repeat: Infinity, delay: i * 0.35, ease: 'easeOut' }}
+              />
+              <span className="block size-[7px] rounded-full bg-[rgb(170_255_205)] shadow-[0_0_8px_rgb(61_255_139),0_0_2px_white]" />
+            </span>
           )
         })}
-        <span aria-hidden="true" className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_16px_var(--primary)]" />
+        <HoloSaturn className="holo-glow absolute left-1/2 top-1/2 w-[30%] -translate-x-1/2 -translate-y-1/2 text-[rgb(61_255_139)]" title="You" />
       </div>
       <ul className="flex-1 space-y-1 text-[13px]">
         {peers.map((p) => (
-          <li key={p.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-accent/5">
+          <li key={p.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-[rgb(61_255_139/0.06)]">
             <span className="flex items-center gap-2">
-              <StatusDot tone="cyan" />
+              <span className="size-[7px] rounded-full bg-[rgb(61_255_139)] shadow-[0_0_6px_rgb(61_255_139)]" aria-hidden="true" />
               {p.location}
               <span className="text-muted-foreground">{p.inbound ? 'inbound' : 'outbound'}</span>
             </span>
-            <span className={cn('tabular-nums', p.latency > 180 ? 'text-warn' : 'text-muted-foreground')}>{p.latency}ms</span>
+            <span className={cn('font-mono text-[12px] tabular-nums', p.latency > 180 ? 'text-warn' : 'text-[rgb(125_255_180)]/80')}>{p.latency}ms</span>
           </li>
         ))}
       </ul>
