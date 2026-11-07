@@ -1,7 +1,7 @@
 'use client'
 
 import { Power } from 'lucide-react'
-import { AnimatePresence, motion, useMotionTemplate, useMotionValue, useSpring } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { minerActions, useMiner } from '@/lib/miner/store'
 import { cn } from '@/lib/utils'
@@ -45,8 +45,11 @@ function roundedHex(s: number, radius: number) {
 }
 
 /**
- * The reactor, as liquid glass in the shape of a rounded hexagon, frosted white like an old indicator
- * lamp. Off, the lamps behind the frost are dark. Mining, they light up in colour and glow through it. The highlight follows the pointer, and pressing it squishes like a liquid.
+ * The reactor: a clear Windows Vista glass button in the shape of a rounded hexagon, with little lamps
+ * sitting underneath the glass. Off, you see the dark bulbs through the clear glass. Mining, they light
+ * up in colour and glow through it. Glossy top half, a dark outer line with a bright inner one, a glow
+ * that blooms up from the bottom on hover (Aero blue) or while mining (Saturn gold), and a glint that
+ * slides across the glass.
  */
 export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const status = useMiner((s) => s.status)
@@ -56,18 +59,13 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const d = size === 'lg' ? 116 : 86
   const box = size === 'lg' ? 156 : 116
 
-  const { path, clip, rimMask } = useMemo(() => {
+  const { path, inner, clip } = useMemo(() => {
     const path = roundedHex(d, d * 0.14)
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}'><path d='${path}' fill='none' stroke='white' stroke-width='${size === 'lg' ? 4 : 3.5}'/></svg>`
-    return { path, clip: `path('${path}')`, rimMask: `url("data:image/svg+xml,${encodeURIComponent(svg)}")` }
-  }, [d, size])
-
-  // the highlight drifts toward the pointer, like light catching a curved surface
-  const px = useMotionValue(36)
-  const py = useMotionValue(22)
-  const sx = useSpring(px, { stiffness: 160, damping: 20 })
-  const sy = useSpring(py, { stiffness: 160, damping: 20 })
-  const sheen = useMotionTemplate`radial-gradient(55% 42% at ${sx}% ${sy}%, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.04) 55%, transparent 75%)`
+    // the bright inner line sits 1.5px inside the dark outer one
+    const inset = 1.6
+    const raw = roundedHex(d - inset * 2, (d - inset * 2) * 0.14)
+    return { path, inner: raw, clip: `path('${path}')`, inset }
+  }, [d])
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -90,130 +88,125 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
               key="glow"
               aria-hidden="true"
               className="spectrum-fill absolute rounded-full blur-[26px]"
-              style={{ width: d * 1.12, height: d * 1.12, animation: 'spectrum-turn 5s linear infinite, spectrum-breathe 3.2s ease-in-out infinite' }}
+              style={{ width: d * 1.08, height: d * 1.08, animation: 'spectrum-turn 5s linear infinite, spectrum-breathe 3.2s ease-in-out infinite' }}
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.9 }}
+              animate={{ opacity: 0.75 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8 }}
             />
           )}
         </AnimatePresence>
 
-
         <motion.button
           type="button"
           onClick={() => (active || status === 'starting' ? minerActions.stop() : minerActions.start())}
-          onPointerMove={(e) => {
-            const r = e.currentTarget.getBoundingClientRect()
-            px.set(((e.clientX - r.left) / r.width) * 100)
-            py.set(Math.min(55, ((e.clientY - r.top) / r.height) * 100))
-          }}
-          onPointerLeave={() => {
-            px.set(36)
-            py.set(22)
-          }}
           disabled={status === 'stopping'}
           aria-pressed={active}
           aria-label={status === 'starting' ? 'Cancel start' : LABELS[status]}
-          whileHover={{ scale: 1.03 }}
-          // squish like a drop of liquid
-          whileTap={{ scaleX: 1.05, scaleY: 0.95 }}
-          transition={{ type: 'spring', stiffness: 520, damping: 14, mass: 0.7 }}
-          className="group relative z-10 grid place-items-center outline-none disabled:cursor-wait"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 26 }}
+          className="vista-orb group relative z-10 grid place-items-center outline-none disabled:cursor-wait"
+          data-lit={lit ? '' : undefined}
           style={{
             width: d,
             height: d,
             clipPath: clip,
-            backdropFilter: 'blur(14px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(14px) saturate(180%)',
+            backdropFilter: 'blur(6px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(6px) saturate(1.4)',
           }}
         >
-          {/* Milk glass, like an old indicator lamp: a thin frosted white diffuser over little lamps.
-              Off, the lamps are dark and it is plain white glass. Mining, the lamps light up in colour
-              and glow through the frost, with liquid colour swimming behind them. */}
-          <span aria-hidden="true" className="absolute inset-0" style={{ background: 'rgb(18 18 22 / 0.22)' }} />
+          {/* clear smoked glass */}
+          <span aria-hidden="true" className="absolute inset-0 transition-colors duration-500" style={{ background: lit ? 'rgb(14 16 24 / 0.38)' : 'rgb(18 22 30 / 0.34)' }} />
 
-          {/* liquid colour swimming behind the frost, only while mining */}
-          <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-0')}>
-            <span className="absolute inset-[-30%] blur-[14px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.55, animation: 'radar-spin 7s linear infinite' }} />
+          {/* liquid colour swimming under the lamps, only while mining */}
+          <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-60' : busy ? 'opacity-30' : 'opacity-0')}>
+            <span className="absolute inset-[-30%] blur-[16px]" style={{ background: 'conic-gradient(from 0deg, var(--spectrum))', opacity: 0.5, animation: 'radar-spin 7s linear infinite' }} />
           </span>
 
-          {/* the lamps behind the diffuser: dark when off, glowing when mining */}
-          <span aria-hidden="true" className={cn('absolute inset-0 transition-opacity duration-1000', active ? 'opacity-100' : busy ? 'opacity-40' : 'opacity-0')}>
-            {LAMPS.map((l, i) => (
-              <span
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  left: `${l.x}%`,
-                  top: `${l.y}%`,
-                  width: l.s,
-                  height: l.s,
-                  marginLeft: -l.s / 2,
-                  marginTop: -l.s / 2,
-                  background: `radial-gradient(circle, rgb(255 255 255 / 0.95), ${l.c} 35%, transparent 70%)`,
-                  filter: 'blur(4px)',
-                  animation: `lamp-flicker ${l.t}s ease-in-out ${l.d}s infinite`,
-                }}
-              />
-            ))}
-          </span>
+          {/* the lamps under the glass: dark little bulbs when off, glowing in colour when mining */}
+          {LAMPS.map((l, i) => {
+            const s = l.s * 0.62
+            return (
+              <span key={i} aria-hidden="true" className="absolute" style={{ left: `${l.x}%`, top: `${l.y}%`, width: 0, height: 0 }}>
+                {/* the unlit bulb you can see through the clear glass */}
+                <span
+                  className="absolute rounded-full"
+                  style={{
+                    width: s * 0.5,
+                    height: s * 0.5,
+                    left: -s * 0.25,
+                    top: -s * 0.25,
+                    background: 'radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.4), rgb(150 154 170 / 0.22) 45%, rgb(0 0 0 / 0.35) 100%)',
+                    boxShadow: 'inset 0 0 0 0.5px rgb(255 255 255 / 0.22), 0 0 2px rgb(0 0 0 / 0.5)',
+                  }}
+                />
+                {/* its light: the wrapper fades it in and out, the inner one flickers */}
+                <span className={cn('absolute transition-opacity duration-1000', active ? 'opacity-100' : busy ? 'opacity-40' : 'opacity-0')} style={{ left: 0, top: 0 }}>
+                  <span
+                    className="absolute rounded-full"
+                    style={{
+                      width: l.s * 1.3,
+                      height: l.s * 1.3,
+                      left: -l.s * 0.65,
+                      top: -l.s * 0.65,
+                      background: `radial-gradient(circle, rgb(255 255 255 / 0.95), ${l.c} 22%, transparent 68%)`,
+                      filter: 'blur(3px)',
+                      animation: `lamp-flicker ${l.t}s ease-in-out ${l.d}s infinite`,
+                    }}
+                  />
+                </span>
+              </span>
+            )
+          })}
 
-          {/* the frosted white layer: always there, a little thinner while lit so the colour shows */}
+          {/* glow blooming up from the bottom: Aero blue on hover, Saturn gold while mining */}
           <span
             aria-hidden="true"
-            className="absolute inset-0 transition-opacity duration-700"
+            className={cn('absolute transition-all duration-500 ease-out', lit ? 'opacity-90 translate-y-0' : 'opacity-0 translate-y-1/4 group-hover:opacity-100 group-hover:translate-y-0')}
+            style={{
+              left: '-15%',
+              right: '-15%',
+              bottom: '-62%',
+              height: '120%',
+              borderRadius: '50%',
+              background: lit
+                ? 'radial-gradient(closest-side, rgb(255 196 92 / 0.7), rgb(255 196 92 / 0.2) 55%, transparent)'
+                : 'radial-gradient(closest-side, rgb(90 185 255 / 0.75), rgb(90 185 255 / 0.22) 55%, transparent)',
+            }}
+          />
+
+          {/* the Vista gloss: a bright top half that stops sharply at the middle */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(circle at 50% 40%, rgb(255 255 255 / 0.56), rgb(238 238 244 / 0.40) 70%), linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(210 210 220 / 0.08))',
-              backdropFilter: 'blur(5px)',
-              WebkitBackdropFilter: 'blur(5px)',
-              opacity: lit ? 0.5 : 1,
-            }}
-          />
-          {/* fine frosting grain */}
-          <span
-            aria-hidden="true"
-            className="absolute inset-0 opacity-[0.22] mix-blend-overlay"
-            style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' seed='7'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23n)'/%3E%3C/svg%3E\")",
+                'linear-gradient(180deg, rgb(255 255 255 / 0.34) 0%, rgb(255 255 255 / 0.13) 48%, rgb(255 255 255 / 0.03) 50%, rgb(255 255 255 / 0.07) 100%)',
             }}
           />
 
-          {/* the spectrum rim: a faint whisper when off, full colour when mining */}
-          <span
-            aria-hidden="true"
-            className={cn('spectrum-fill absolute inset-0 transition-opacity duration-700', lit ? 'opacity-90' : 'opacity-20 group-hover:opacity-40')}
-            data-speed={active ? undefined : 'slow'}
-            style={{ WebkitMaskImage: rimMask, maskImage: rimMask }}
-          />
+          {/* a glint that slides across the gloss on hover */}
+          <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
+            <span
+              className="absolute inset-y-0 w-[38%] -left-[60%] transition-[left] duration-700 ease-out group-hover:left-[125%]"
+              style={{ background: 'linear-gradient(100deg, transparent, rgb(255 255 255 / 0.5), transparent)' }}
+            />
+          </span>
 
-          {/* glass edge: bright where the light bends, top-left and bottom-right */}
+          {/* edges: a dark outer line and a bright inner one */}
           <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
-            <defs>
-              <linearGradient id={`lg-edge-${size}`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="white" stopOpacity="0.7" />
-                <stop offset="0.4" stopColor="white" stopOpacity="0.22" />
-                <stop offset="0.7" stopColor="white" stopOpacity="0.14" />
-                <stop offset="1" stopColor="white" stopOpacity="0.4" />
-              </linearGradient>
-              <linearGradient id={`lg-pool-${size}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0.6" stopColor="white" stopOpacity="0" />
-                <stop offset="1" stopColor="white" stopOpacity="0.06" />
-              </linearGradient>
-            </defs>
-            {/* light pooling in the bottom of the glass */}
-            <path d={path} fill={`url(#lg-pool-${size})`} />
-            <path d={path} fill="none" stroke={`url(#lg-edge-${size})`} strokeWidth="1.6" />
+            <path d={path} fill="none" stroke="black" strokeOpacity="0.75" strokeWidth="2.4" />
+            <path d={inner} transform="translate(1.6 1.6)" fill="none" stroke="white" strokeOpacity={lit ? 0.55 : 0.42} strokeWidth="1" />
           </svg>
 
-          {/* specular highlight, following the pointer */}
-          <motion.span aria-hidden="true" className="pointer-events-none absolute inset-0 mix-blend-overlay" style={{ background: sheen }} />
-
           <Power
-            className={cn('relative transition-all duration-500', size === 'lg' ? 'size-9' : 'size-7', lit ? 'text-white drop-shadow-[0_0_6px_rgb(255_255_255/0.45)]' : 'text-[rgb(70_72_84)]/80 group-hover:text-[rgb(50_52_64)]/90')}
-            strokeWidth={2}
+            className={cn(
+              'relative transition-all duration-500',
+              size === 'lg' ? 'size-9' : 'size-7',
+              lit ? 'text-white drop-shadow-[0_0_8px_rgb(255_220_160/0.7)]' : 'text-white/85 drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)] group-hover:text-white',
+            )}
+            strokeWidth={2.2}
             aria-hidden="true"
           />
         </motion.button>
