@@ -131,7 +131,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
           {/* Milk glass, like an old indicator lamp: a thin frosted white diffuser over little lamps.
               Off, the lamps are dark and it is plain white glass. Mining, the lamps light up in colour
               and glow through the frost, with liquid colour swimming behind them. */}
-          <span aria-hidden="true" className="absolute inset-0 transition-colors duration-700" style={{ background: lit ? 'rgb(255 255 255 / 0.10)' : 'rgb(236 238 244 / 0.30)' }} />
+          <span aria-hidden="true" className="absolute inset-0 transition-colors duration-700" style={{ background: lit ? 'rgb(255 255 255 / 0.10)' : 'rgb(120 124 136 / 0.30)' }} />
 
           {/* liquid colour swimming behind the frost, only while mining */}
           <span aria-hidden="true" className={cn('absolute inset-0 overflow-hidden transition-opacity duration-700', active ? 'opacity-100' : busy ? 'opacity-50' : 'opacity-0')}>
@@ -168,7 +168,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
               background:
                 lit
                   ? 'radial-gradient(circle at 50% 40%, rgb(255 255 255 / 0.56), rgb(238 238 244 / 0.40) 70%), linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(210 210 220 / 0.08))'
-                  : 'radial-gradient(circle at 50% 38%, rgb(255 255 255 / 0.92), rgb(244 245 250 / 0.80) 72%), linear-gradient(180deg, rgb(255 255 255 / 0.30), rgb(228 230 238 / 0.18))',
+                  : 'radial-gradient(circle at 50% 38%, rgb(236 238 244 / 0.74), rgb(206 209 218 / 0.60) 72%), linear-gradient(180deg, rgb(255 255 255 / 0.20), rgb(180 184 196 / 0.12))',
               backdropFilter: 'blur(5px)',
               WebkitBackdropFilter: 'blur(5px)',
               opacity: lit ? 0.16 : 1,
