@@ -115,6 +115,10 @@ function WalletHome({ open }: { open: (s: SheetId) => void }) {
           <Ticker value={spendable} format={(n) => formatCoin(n, 4)} className="display gold-text text-[clamp(44px,4.8vw,68px)] [text-shadow:0_2px_30px_rgb(0_0_0/0.35)]" />
           <span className="text-[clamp(17px,1.6vw,22px)] font-medium text-white/55">SAT</span>
         </p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+          <span className="font-mono tabular-nums text-white/60" title="Your spendable balance in rings, SAT's smallest unit">{w.spendableSats.toLocaleString('en-US')} rings</span>
+          <span className="holo-text font-mono text-[11px] tracking-[0.06em]" title="A ring is the smallest piece of a SAT, like a satoshi is for Bitcoin">1 SAT = 100,000,000 rings</span>
+        </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <button type="button" className="mac-button h-8 px-4" data-variant="primary" onClick={() => open('send')} disabled={w.spendableSats === 0}>
             <ArrowUpRight className="size-4" aria-hidden="true" /> Send
