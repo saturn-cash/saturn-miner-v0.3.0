@@ -8,7 +8,11 @@
  */
 type P2 = [number, number];
 
-const G = '61,255,139';
+const GREEN = [61, 255, 139];
+const GREY = [150, 155, 166];
+/** the colour of the current draw: green when on, grey when powered off */
+let G = '61,255,139';
+let POWER = 1;
 const R = 46; // hexagon vertex radius, in coin units (the canvas is 112 units wide)
 const CORNER = 7;
 const T = 7.5; // thickness
@@ -144,7 +148,7 @@ function drawPlanet(o: CanvasRenderingContext2D, cx: number, cy: number, s: numb
 		o.ellipse(0, 0, rx, ry, 0, 0, Math.PI);
 		stroke(a, w);
 	}
-	o.fillStyle = 'rgb(200,255,222)';
+	o.fillStyle = `rgba(200,255,222,${POWER.toFixed(3)})`;
 	for (const sp of SPARKS) {
 		const [rx, ry] = RINGS[sp.ring];
 		const a = sp.a + loop * TAU * sp.m;
@@ -231,6 +235,8 @@ export type CoinOptions = {
 	beam?: boolean;
 	/** 0..1: how bright the projection is (the power button dims it when off) */
 	energy?: number;
+	/** 0..1: powered off (grey, no beam, the projector unlit) to on (green light) */
+	power?: number;
 	/** line weight multiplier, for drawing it small (a header icon) */
 	weight?: number;
 	/** time (s) for the scanlines, sweep and flicker, if they should keep moving while the coin holds still */
@@ -243,7 +249,10 @@ export type CoinOptions = {
  * on at every whole COIN_PERIOD.
  */
 export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, opts: CoinOptions | CoinStyle = {}) {
-	const { style = 'hologram', beam: withBeam = true, energy = 1, fxT = t, glitches = false, weight = 1 } = typeof opts === 'string' ? { style: opts } : opts;
+	const { style = 'hologram', beam: withBeam = true, energy = 1, fxT = t, glitches = false, weight = 1, power: pw = 1 } = typeof opts === 'string' ? { style: opts } : opts;
+	const power = Math.max(0, Math.min(1, pw));
+	POWER = power;
+	G = GREY.map((g, i) => Math.round(g + (GREEN[i] - g) * power)).join(',');
 	WT = weight;
 	const main = ctx.canvas;
 	const dpr = main.width / w;
@@ -274,13 +283,13 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	const cy = withBeam ? 58 * k + bob : h / 2 + bob * 0.5;
 	if (withBeam) {
 	const glowE = o.createRadialGradient(cx, ey, 0, cx, ey, 22 * k);
-	glowE.addColorStop(0, `rgba(${G},.35)`);
+	glowE.addColorStop(0, `rgba(${G},${(0.35 * power).toFixed(3)})`);
 	glowE.addColorStop(1, `rgba(${G},0)`);
 	o.fillStyle = glowE;
 	o.fillRect(cx - 24 * k, ey - 10 * k, 48 * k, 20 * k);
 	o.beginPath();
 	o.ellipse(cx, ey, 15 * k, 3.4 * k, 0, 0, TAU);
-	o.strokeStyle = `rgba(${G},.95)`;
+	o.strokeStyle = `rgba(${G},${(0.55 + 0.4 * power).toFixed(3)})`;
 	o.lineWidth = 1.3 * k * WT;
 	o.stroke();
 	o.beginPath();
@@ -291,8 +300,8 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	// the beam, widening up towards the coin
 	const top = cy + 30 * k;
 	const beam = o.createLinearGradient(0, ey, 0, top - 30 * k);
-	beam.addColorStop(0, `rgba(${G},.2)`);
-	beam.addColorStop(0.6, `rgba(${G},.05)`);
+	beam.addColorStop(0, `rgba(${G},${(0.2 * power).toFixed(3)})`);
+	beam.addColorStop(0.6, `rgba(${G},${(0.05 * power).toFixed(3)})`);
 	beam.addColorStop(1, `rgba(${G},0)`);
 	o.beginPath();
 	o.moveTo(cx - 13 * k, ey);
@@ -308,7 +317,7 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 		const half = 13 * k + u * 30 * k;
 		o.beginPath();
 		o.arc(cx + mx * half, y, 0.75 * k, 0, TAU);
-		o.fillStyle = `rgba(200,255,222,${(Math.sin(u * Math.PI) * 0.8).toFixed(3)})`;
+		o.fillStyle = `rgba(200,255,222,${(Math.sin(u * Math.PI) * 0.8 * power).toFixed(3)})`;
 		o.fill();
 	}
 	}
@@ -370,7 +379,7 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	// scanlines scrolling up through it, and a bright band sweeping up twice a loop
 	o.setTransform(1, 0, 0, 1, 0, 0);
 	o.globalCompositeOperation = 'destination-out';
-	o.fillStyle = 'rgba(0,0,0,.42)';
+	o.fillStyle = `rgba(0,0,0,${(0.42 * power).toFixed(3)})`;
 	const step = 3 * dpr;
 	const shift = (fx * 20 * step) % step;
 	for (let y = -shift; y < off.height; y += step) o.fillRect(0, y, off.width, dpr);
@@ -378,7 +387,7 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	const by = off.height * (1.1 - 1.3 * ((fx * 2) % 1));
 	const band = o.createLinearGradient(0, by - 14 * dpr, 0, by + 14 * dpr);
 	band.addColorStop(0, 'rgba(255,255,255,0)');
-	band.addColorStop(0.5, 'rgba(220,255,235,.28)');
+	band.addColorStop(0.5, `rgba(220,255,235,${(0.28 * power).toFixed(3)})`);
 	band.addColorStop(1, 'rgba(255,255,255,0)');
 	o.fillStyle = band;
 	o.fillRect(0, by - 14 * dpr, off.width, 28 * dpr);
@@ -398,7 +407,7 @@ export function drawCoin(ctx: CanvasRenderingContext2D, w: number, t: number, op
 	ctx.save();
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
 	ctx.clearRect(0, 0, main.width, main.height);
-	ctx.globalAlpha = (glitch ? 0.5 : 0.28) * flicker;
+	ctx.globalAlpha = (glitch ? 0.5 : 0.28) * flicker * power;
 	ctx.drawImage(tint!, -(glitch ? 3.5 : 1) * dpr, 0);
 	ctx.globalAlpha = (glitch ? 0.75 : 1) * flicker;
 	ctx.globalCompositeOperation = 'lighter';

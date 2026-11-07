@@ -16,7 +16,8 @@ const LABELS = {
 /** spin speed, in turns per second, for each state; idle settles face-on */
 const FULL = 1 / COIN_PERIOD
 const SPEED = { idle: 0, starting: FULL * 0.45, mining: FULL, stopping: 0 } as const
-const ENERGY = { idle: 0.45, starting: 0.8, mining: 1, stopping: 0.6 } as const
+/** how powered up the projection is: off is grey with the projector unlit */
+const ENERGY = { idle: 0, starting: 0.7, mining: 1, stopping: 0.35 } as const
 
 /**
  * The power button is the Saturn hologram coin (coin-spin.ts, the flat cursor Saturn inside): a
@@ -55,19 +56,19 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
       if (target > 0) {
         v += (target - v) * Math.min(1, dt * 1.4)
         p += v * dt
-      } else if (p !== Math.ceil(p - 1e-6) || v > 0) {
-        // coast down and settle face on
-        const stop = Math.ceil(p - 1e-6)
-        v = Math.max(v * (1 - dt * 1.1), 0.05)
+      } else if (p * 2 !== Math.ceil(p * 2 - 1e-6) || v > 0) {
+        // coast down and settle face on (it looks the same every half turn)
+        const stop = Math.ceil(p * 2 - 1e-6) / 2
+        v = Math.max(v - dt * 0.05, 0.09)
         p += v * dt
         if (p >= stop) {
           p = stop
           v = 0
         }
       }
-      const eT = st === 'idle' && state.current.hover ? 0.7 : ENERGY[st]
+      const eT = st === 'idle' && state.current.hover ? 0.18 : ENERGY[st]
       e += (eT - e) * Math.min(1, dt * 5)
-      drawCoin(ctx, w, p * COIN_PERIOD, { style: 'cursor', energy: e, fxT: now / 1000, glitches: false })
+      drawCoin(ctx, w, p * COIN_PERIOD, { style: 'cursor', power: e, energy: 0.75 + 0.25 * e, fxT: now / 1000 })
       const moving = v > 0 || target > 0 || Math.abs(eT - e) > 0.01
       // while mining the scanlines keep scrolling; otherwise stop drawing once everything has settled
       raf = moving && !document.hidden ? requestAnimationFrame(frame) : 0
@@ -79,7 +80,7 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
       }
     }
     state.current.kick = kick
-    drawCoin(ctx, w, 0, { style: 'cursor', energy: e, fxT: 0, glitches: false })
+    drawCoin(ctx, w, 0, { style: 'cursor', power: e, energy: 0.75 + 0.25 * e, fxT: 0 })
     kick()
     const vis = () => (document.hidden ? (cancelAnimationFrame(raf), (raf = 0)) : kick())
     document.addEventListener('visibilitychange', vis)
