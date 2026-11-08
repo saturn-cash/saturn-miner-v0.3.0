@@ -19,11 +19,61 @@ const SPEED = { idle: 0, starting: FULL * 0.45, mining: FULL, stopping: 0 } as c
 /** how powered up the projection is: off is grey with the projector unlit */
 const ENERGY = { idle: 0, starting: 0.7, mining: 1, stopping: 0.35 } as const
 
+type Status = keyof typeof SPEED
+
+/**
+ * The coin's motion lives here, outside the component, on one shared clock. Leaving the screen
+ * (or hiding the window) and coming back picks the spin up exactly where it would be by now, so it
+ * never looks like it restarted; two buttons on screen at once during a screen change stay in step.
+ */
+const spin = { p: 0, v: 0, e: 0, t: 0, hover: false, status: 'idle' as Status, started: false, rest: false }
+
+function energyTarget() {
+  return spin.status === 'idle' && spin.hover ? 0.18 : ENERGY[spin.status]
+}
+
+function step(dt: number) {
+  const target = SPEED[spin.status]
+  if (target > 0) {
+    spin.v += (target - spin.v) * Math.min(1, dt * 1.4)
+    spin.p += spin.v * dt
+  } else if (spin.p * 2 !== Math.ceil(spin.p * 2 - 1e-6) || spin.v > 0) {
+    // coast down and settle face on (it looks the same every half turn)
+    const stop = Math.ceil(spin.p * 2 - 1e-6) / 2
+    spin.v = Math.max(spin.v - dt * 0.05, 0.09)
+    spin.p += spin.v * dt
+    if (spin.p >= stop) {
+      spin.p = stop
+      spin.v = 0
+    }
+  }
+  const eT = energyTarget()
+  spin.e += (eT - spin.e) * Math.min(1, dt * 5)
+}
+
+/** run the motion forward to `now`; a second call for the same frame does nothing */
+function advanceTo(now: number) {
+  let left = (now - spin.t) / 1000
+  spin.t = now
+  if (left <= 0) return
+  // time spent off screen is caught up in small steps; past a minute everything has settled into
+  // its steady speed, so the rest is just more turns at that speed
+  for (let n = 0; left > 0 && n < 1200; n++) {
+    const dt = Math.min(0.05, left)
+    step(dt)
+    left -= dt
+  }
+  if (left > 0 && SPEED[spin.status] > 0) {
+    spin.v = SPEED[spin.status]
+    spin.p += spin.v * left
+  }
+}
+
 /**
  * The power button is the Saturn hologram coin (coin-spin.ts, the flat cursor Saturn inside): a
- * small emitter projects it. Off, it holds still, face on, dimmed. Start mining and it powers up and
- * spins up, the planet turning one way and the coin the other, glitching as it goes; stop and it
- * slows down and settles back face on. It only redraws while something is moving.
+ * small emitter projects it. Off, it holds still, face on, grey with the projector unlit. Start
+ * mining and it powers up and spins; stop and it slows down and settles back face on. It only
+ * redraws while something is moving.
  */
 export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const status = useMiner((s) => s.status)
@@ -31,8 +81,8 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
   const w = size === 'lg' ? 150 : 112
   const h = Math.round(w * COIN_ASPECT)
   const canvas = useRef<HTMLCanvasElement>(null)
-  const state = useRef({ status: status as keyof typeof SPEED, hover: false, kick: () => {} })
-  state.current.status = status
+  const kickRef = useRef(() => {})
+  spin.status = status
 
   useEffect(() => {
     const c = canvas.current
@@ -43,55 +93,50 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
     c.height = Math.round(h * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    let p = 0 // turns of the coin
-    let v = 0 // turns per second
-    let e: number = ENERGY[state.current.status]
-    let last = performance.now()
+    const draw = (now: number) =>
+      drawCoin(ctx, w, spin.p * COIN_PERIOD, { style: 'cursor', power: spin.e, energy: 0.75 + 0.25 * spin.e, fxT: now / 1000 })
+
     let raf = 0
     const frame = (now: number) => {
-      const dt = Math.min(0.1, (now - last) / 1000)
-      last = now
-      const st = state.current.status
-      const target = SPEED[st]
-      if (target > 0) {
-        v += (target - v) * Math.min(1, dt * 1.4)
-        p += v * dt
-      } else if (p * 2 !== Math.ceil(p * 2 - 1e-6) || v > 0) {
-        // coast down and settle face on (it looks the same every half turn)
-        const stop = Math.ceil(p * 2 - 1e-6) / 2
-        v = Math.max(v - dt * 0.05, 0.09)
-        p += v * dt
-        if (p >= stop) {
-          p = stop
-          v = 0
-        }
-      }
-      const eT = st === 'idle' && state.current.hover ? 0.18 : ENERGY[st]
-      e += (eT - e) * Math.min(1, dt * 5)
-      drawCoin(ctx, w, p * COIN_PERIOD, { style: 'cursor', power: e, energy: 0.75 + 0.25 * e, fxT: now / 1000 })
-      const moving = v > 0 || target > 0 || Math.abs(eT - e) > 0.01
+      advanceTo(now)
+      draw(now)
+      const moving = spin.v > 0 || SPEED[spin.status] > 0 || Math.abs(energyTarget() - spin.e) > 0.01
+      if (!moving) spin.rest = true
       // while mining the scanlines keep scrolling; otherwise stop drawing once everything has settled
       raf = moving && !document.hidden ? requestAnimationFrame(frame) : 0
     }
     const kick = () => {
-      if (!raf && !document.hidden) {
-        last = performance.now()
-        raf = requestAnimationFrame(frame)
+      if (raf || document.hidden) return
+      // a coin that came to rest has nothing to catch up on: start the clock from now
+      if (spin.rest) {
+        spin.t = performance.now()
+        spin.rest = false
       }
+      raf = requestAnimationFrame(frame)
     }
-    state.current.kick = kick
-    drawCoin(ctx, w, 0, { style: 'cursor', power: e, energy: 0.75 + 0.25 * e, fxT: 0 })
+    kickRef.current = kick
+
+    const now = performance.now()
+    if (!spin.started) {
+      spin.started = true
+      spin.t = now
+      spin.e = ENERGY[spin.status]
+    } else if (!spin.rest) {
+      advanceTo(now)
+    }
+    draw(now)
     kick()
     const vis = () => (document.hidden ? (cancelAnimationFrame(raf), (raf = 0)) : kick())
     document.addEventListener('visibilitychange', vis)
     return () => {
       cancelAnimationFrame(raf)
       document.removeEventListener('visibilitychange', vis)
+      spin.hover = false
     }
   }, [w, h])
 
   // a status change (start, stop) wakes the animation
-  useEffect(() => state.current.kick(), [status])
+  useEffect(() => kickRef.current(), [status])
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -99,12 +144,12 @@ export function IgnitionButton({ size = 'lg' }: { size?: 'lg' | 'md' }) {
         type="button"
         onClick={() => (active || status === 'starting' ? minerActions.stop() : minerActions.start())}
         onPointerEnter={() => {
-          state.current.hover = true
-          state.current.kick()
+          spin.hover = true
+          kickRef.current()
         }}
         onPointerLeave={() => {
-          state.current.hover = false
-          state.current.kick()
+          spin.hover = false
+          kickRef.current()
         }}
         disabled={status === 'stopping'}
         aria-pressed={active}
