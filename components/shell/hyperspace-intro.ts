@@ -473,16 +473,20 @@ export function createIntro(canvas: HTMLCanvasElement) {
     [ARRIVE - 0.06, 0.1, 0.9],
     [ARRIVE + 0.28, 0.06, 0.5],
     [4.35, 0.05, 0.35],
-    // nothing after this: the end lands clean into the app
+    [BIG_PING + 0.02, 0.14, 0.7],
   ]
   const hash = (n: number) => {
     const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
     return x - Math.floor(x)
   }
   let buf: HTMLCanvasElement | null = null
-  function glitch(t: number) {
+  const burstAt = (t: number) => {
     let g = 0
     for (const [a, l, k] of BURSTS) if (t >= a && t < a + l) g = Math.max(g, k)
+    return g
+  }
+  function glitch(t: number) {
+    const g = burstAt(t)
     if (!g) return
     if (!buf) buf = document.createElement('canvas')
     if (buf.width !== canvas.width || buf.height !== canvas.height) {
@@ -492,7 +496,7 @@ export function createIntro(canvas: HTMLCanvasElement) {
     const b = buf.getContext('2d')!
     b.clearRect(0, 0, buf.width, buf.height)
     b.drawImage(canvas, 0, 0)
-    const frame = Math.floor(t * 30)
+    const frame = Math.floor(t * 12) // the glitch pattern changes at 12 fps: choppy, not smooth
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalCompositeOperation = 'source-over'
     const bands = 2 + Math.floor(g * 4)
@@ -516,8 +520,10 @@ export function createIntro(canvas: HTMLCanvasElement) {
     }
   }
 
+  // during a glitch the picture itself stutters: time steps at 12 fps, so the projection skips
   function drawWithGlitch(t: number) {
-    draw(t)
+    const g = burstAt(t)
+    draw(g ? Math.floor(t * 12) / 12 : t)
     glitch(t)
   }
 
