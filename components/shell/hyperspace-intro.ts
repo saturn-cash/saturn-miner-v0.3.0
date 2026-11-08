@@ -463,5 +463,63 @@ export function createIntro(canvas: HTMLCanvasElement) {
     ctx.globalCompositeOperation = 'source-over'
   }
 
-  return { draw, resize }
+  // ---- hologram glitches: short bursts where bands of the picture slip sideways and flicker ----
+  const BURSTS: [number, number, number][] = [
+    // [start s, length s, strength]
+    [0.42, 0.08, 0.6],
+    [LIFTOFF + 0.05, 0.07, 0.5],
+    [JUMP - 0.04, 0.12, 1],
+    [2.55, 0.05, 0.4],
+    [ARRIVE - 0.06, 0.1, 0.9],
+    [ARRIVE + 0.28, 0.06, 0.5],
+    [4.35, 0.05, 0.35],
+    [BIG_PING + 0.02, 0.08, 0.7],
+  ]
+  const hash = (n: number) => {
+    const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
+    return x - Math.floor(x)
+  }
+  let buf: HTMLCanvasElement | null = null
+  function glitch(t: number) {
+    let g = 0
+    for (const [a, l, k] of BURSTS) if (t >= a && t < a + l) g = Math.max(g, k)
+    if (!g) return
+    if (!buf) buf = document.createElement('canvas')
+    if (buf.width !== canvas.width || buf.height !== canvas.height) {
+      buf.width = canvas.width
+      buf.height = canvas.height
+    }
+    const b = buf.getContext('2d')!
+    b.clearRect(0, 0, buf.width, buf.height)
+    b.drawImage(canvas, 0, 0)
+    const frame = Math.floor(t * 30)
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalCompositeOperation = 'source-over'
+    const bands = 2 + Math.floor(g * 4)
+    for (let i = 0; i < bands; i++) {
+      const y = Math.floor(hash(frame * 7 + i) * canvas.height)
+      const h = Math.max(2, Math.floor((0.012 + hash(frame * 13 + i) * 0.07) * canvas.height))
+      const dx = Math.round((hash(frame * 3 + i * 5) - 0.5) * canvas.width * 0.07 * g)
+      ctx.clearRect(0, y, canvas.width, h)
+      ctx.drawImage(buf, 0, y, canvas.width, h, dx, y, canvas.width, h)
+      // a faint cyan ghost of the band, offset the other way
+      ctx.globalAlpha = 0.35 * g
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.drawImage(buf, 0, y, canvas.width, h, -dx * 0.6, y + 1, canvas.width, h)
+      ctx.globalAlpha = 1
+      ctx.globalCompositeOperation = 'source-over'
+    }
+    // the whole projection dips for a frame
+    if (hash(frame * 17) < 0.5) {
+      ctx.fillStyle = `rgba(0,0,0,${(0.25 * g).toFixed(3)})`
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    }
+  }
+
+  function drawWithGlitch(t: number) {
+    draw(t)
+    glitch(t)
+  }
+
+  return { draw: drawWithGlitch, resize }
 }
