@@ -473,7 +473,7 @@ export function createIntro(canvas: HTMLCanvasElement) {
     [ARRIVE - 0.06, 0.1, 0.9],
     [ARRIVE + 0.28, 0.06, 0.5],
     [4.35, 0.05, 0.35],
-    [BIG_PING + 0.02, 0.08, 0.7],
+    // nothing after this: the end lands clean into the app
   ]
   const hash = (n: number) => {
     const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
