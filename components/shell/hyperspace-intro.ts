@@ -496,7 +496,7 @@ export function createIntro(canvas: HTMLCanvasElement) {
     const b = buf.getContext('2d')!
     b.clearRect(0, 0, buf.width, buf.height)
     b.drawImage(canvas, 0, 0)
-    const frame = Math.floor(t * 12) // the glitch pattern changes at 12 fps: choppy, not smooth
+    const frame = Math.floor(t * 30)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalCompositeOperation = 'source-over'
     const bands = 2 + Math.floor(g * 4)
@@ -520,10 +520,8 @@ export function createIntro(canvas: HTMLCanvasElement) {
     }
   }
 
-  // during a glitch the picture itself stutters: time steps at 12 fps, so the projection skips
   function drawWithGlitch(t: number) {
-    const g = burstAt(t)
-    draw(g ? Math.floor(t * 12) / 12 : t)
+    draw(t)
     glitch(t)
   }
 
