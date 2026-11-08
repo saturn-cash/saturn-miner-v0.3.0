@@ -103,9 +103,6 @@
     user-select: text;
     cursor: auto;
   }
-  ::selection {
-    background: rgb(245 185 113 / 0.35);
-  }
   /* macOS focus ring: soft accent halo */
   :focus-visible {
     outline: none;
